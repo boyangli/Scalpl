@@ -1,0 +1,62 @@
+package plan
+import variable._
+import variable.TermList._
+class Action(
+    val id: Int,
+    val name: String,
+    val parameters: List[Variable],
+    val constraints: List[Proposition],
+    val preconditions: List[Proposition],
+    val effects: List[Proposition]) {
+
+  require(isValid())
+
+  def isValid(): Boolean =
+    {
+      // all distinct variables referred to by this action 
+      val allvars = (preconditions ::: constraints ::: effects).map(p => p.allVariables).flatten.distinct
+      // those not contained in the parameters
+      val newvars = allvars filterNot (parameters contains)
+
+      // they should not exist
+      newvars.length == 0
+    }
+
+  def instantiate(number: Int): Action =
+    {
+      new Action(
+        number, name,
+        parameters.map(_ instantiate number),
+        constraints.map(Action.instanProp(_, number)),
+        preconditions.map(Action.instanProp(_, number)),
+        effects.map(Action.instanProp(_, number)))
+    }
+
+  override def toString(): String =
+    {
+      "(" + name +
+        (if (parameters.length > 0) " " + parameters.mkString(" ") else "") +
+        ")"
+    }
+  
+
+}
+
+object Action {
+
+  def apply(name: String, parameters: List[Variable], constraints: List[Proposition],
+            preconditions: List[Proposition], effects: List[Proposition]) =
+    new Action(-1, name, parameters, constraints, preconditions, effects)
+
+  private def instanProp(prop: Proposition, number: Int): Proposition =
+    {
+      val verb = prop.verb
+      val termlist: List[TopTerm] = prop.termlist.map(_ match {
+        case v: Variable => v.instantiate(number)
+        case s: PopSymbol => s
+        case p: Proposition => instanProp(p, number)
+        case _ => throw new Exception("weird content in term list")
+      })
+      Proposition(verb, termlist)
+    }
+}

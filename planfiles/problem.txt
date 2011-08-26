@@ -1,0 +1,9 @@
+(problem
+(init 
+	(person tom)(person jack)
+	(dislike tom jack)
+)
+(goal
+	(hurt jack)
+)
+)
