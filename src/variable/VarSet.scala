@@ -115,6 +115,8 @@ class VarSet(val equals: List[Token], val nonEquals: List[Token], val symbol: Po
     {
       new VarSet(this.equals ::: that.equals, this.nonEquals ::: that.nonEquals, if (this.isGrounded()) this.symbol else that.symbol)
     }
+  
+  def equalsAndSymbol() = if (isGrounded()) symbol::equals else equals
 }
 
 object VarSet {

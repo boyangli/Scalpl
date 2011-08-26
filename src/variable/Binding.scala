@@ -346,16 +346,16 @@ class Binding private (val hashes: HashMap[Token, VarSet]) {
                      * to make the constraints work 
                      * if there is no such value, planning will fail eventually.
                      * this may be INEFFICIENT */
-                    val bind = this + (vs1.bindNotTo(vs2.equals), vs2.bindNotTo(vs1.equals))
+                    val bind = this + (vs1.bindNotTo(vs2.equalsAndSymbol), vs2.bindNotTo(vs1.equalsAndSymbol))
                     answer += bind
                   }
                 case (Some(vs1: VarSet), None) =>
                   // when one variable is completely free
                   // we can always make it different from any other variable
-                  val bind = this + (vs1.bindNotTo(v2), VarSet(v2).bindNotTo(vs1.equals))
+                  val bind = this + (vs1.bindNotTo(v2), VarSet(v2).bindNotTo(vs1.equalsAndSymbol))
                   answer += bind
                 case (None, Some(vs2: VarSet)) =>
-                  val bind = this + (vs2.bindNotTo(v1), VarSet(v1).bindNotTo(vs2.equals))
+                  val bind = this + (vs2.bindNotTo(v1), VarSet(v1).bindNotTo(vs2.equalsAndSymbol))
                   answer += bind
                 case (None, None) =>
                   // simple case there. We can simple create two varsets and let them be different
