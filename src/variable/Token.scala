@@ -76,6 +76,14 @@ case class Proposition(val verb: PopSymbol, val termlist: TermList) extends TopT
       }
     })
   }
+  
+  def negate():Proposition =
+    if (verb == 'not) {
+      if (termlist.length != 1) throw new RuntimeException("malformed not propositions: " + this)
+      termlist(0).asInstanceOf[Proposition] 
+    }
+    else new Proposition('not, List(this))
+  
 }
 
 object Proposition {

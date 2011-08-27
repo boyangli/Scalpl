@@ -176,7 +176,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) {
    * and 2) respects the given constraints.
    *
    */
-  def separate(p1: Proposition, p2: Proposition, constraints: List[Proposition], initial: List[Proposition]): List[Binding] =
+  def separate(p1: Proposition, p2: Proposition): List[Binding] =
     {
       // step 0: if they are already the same, no separation is possible and return Nil
       if (substVars(p1) == substVars(p2)) return Nil
@@ -403,4 +403,10 @@ class Binding private (val hashes: HashMap[Token, VarSet]) {
         case other => other
       }))
     }
+  
+  /** tests if two propositions may be equal after considering current bound variables in them
+   * 
+   */
+  def canEqual(p1:Proposition, p2:Proposition) =
+		  substVars(p1) equalsIgnoreVars substVars(p2)
 }

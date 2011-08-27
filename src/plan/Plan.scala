@@ -42,6 +42,8 @@ case class Plan(
   }
   
   def id2step(id:Int):Option[Action] = steps.find{_.id == id} 
+  
+  def initialState() = steps.find(_.id == 0).get.effects // initial state
 }
 
 object Plan {

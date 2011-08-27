@@ -212,7 +212,7 @@ object VarSet_Test {
 	  var bind = new Binding()
 	  bind += VarSet(Variable("?p4"), 'tom)
 	  bind += VarSet(Variable("?p2"), 'adam)
-	  val list = bind.separate(p1, p2, List(), List())
+	  val list = bind.separate(p1, p2)
 //	  val b = list(0)
 //	  println(b.hashes.keySet)
 	  println(list.mkString("\n\n"))

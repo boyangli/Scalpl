@@ -10,12 +10,17 @@ object Main {
     val problem = ProblemParser.readFile("./planfiles/problem.txt")
     
     Global.init(actions, problem)
-    val plan = Global.initPlan()
+    var plan = Global.initPlan()
     
     println(plan.detailString)
-    val p2 = FlawRepair.refine(plan)
-    println("plan: \n" + p2(0).detailString())
-    println('symbol == PopSymbol('symbol).symbol)
+    var plans = FlawRepair.refine(plan)
+    println("*********************************")
+    plans foreach {x => println("plan: \n" + x.detailString() + "\nbinding: " + x.binding + "\n\n")}
+
+    
+    plans = FlawRepair.refine(plans(0))
+    println("*********************************")
+    plans foreach {x => println("plan: \n" + x.detailString() + "\nbinding: " + x.binding + "\n\n")}
   }
   
   

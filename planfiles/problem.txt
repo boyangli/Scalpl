@@ -2,8 +2,10 @@
 (init 
 	(person tom)(person jack)
 	(dislike tom jack)
+	(hurt jill)
 )
 (goal
 	(hurt jack)
+	(not (hurt tom))
 )
 )
