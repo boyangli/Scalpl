@@ -7,9 +7,9 @@ class Flaw(protected var level:Int) {
 	def priority() = level
 }
 
-class Threat (val id:Int, val condition:Link) extends Flaw(10)
+class Threat (val id:Int, val effect:Proposition, val threatened:Link) extends Flaw(10)
 {
-  override def toString():String = "<Threat: step" + id + "-X-" + condition + ">"
+  override def toString():String = "<Threat: step" + id + " " + effect + "-X-" + threatened + ">"
 }
 
 class OpenCond(val id:Int, val condition:Proposition) extends Flaw(20)

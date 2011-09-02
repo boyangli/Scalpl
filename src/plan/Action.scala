@@ -39,7 +39,10 @@ class Action(
         ")"
     }
   
-
+  /** constraints without neqs
+   * 
+   */
+  def pureConstraints() = constraints filterNot (_.verb == 'neq)
 }
 
 object Action {

@@ -135,7 +135,12 @@ class Binding private (val hashes: HashMap[Token, VarSet]) {
       (p1.termlist, p2.termlist).zipped.foreach((_, _) match {
         case (t1: Token, t2: Token) => answer += ((t1, t2))
         case (p1: Proposition, p2: Proposition) =>
-          matchTokens(p1, p2) foreach { answer ++= _ } // recursive             
+          matchTokens(p1, p2) match
+          {
+            case Some(l:List[(Token, Token)]) =>
+            	l.foreach{ answer += _} // recursive 
+            case None => return None
+          }
         case _ => return None
       })
 

@@ -20,8 +20,46 @@ object FlawRepair {
 
   def repairThreat(p: Plan, threat: Threat): List[Plan] =
     {
-      promote(p, threat.id, threat.condition.id1) :::
-        demote(p, threat.id, threat.condition.id2)
+      if (verifyThreat(threat, p)) {
+        // the threat is still valid
+        //var answer = List[Plan]()
+        // first option: separate the two conflicting conditions
+        val separated = p.binding.separate(threat.effect.negate, threat.threatened.condition) map {
+          newbind =>
+            p.copy(
+              binding = newbind,
+              flaws = p.flaws - threat,
+              reason = "separating " + threat.effect + " and " + threat.threatened.condition,
+              parent = p)
+        }
+        // second option: unify the two and make use of promotion and demotion
+        // id2step returns an option. directly get from the options because 
+        // they really should exist
+        val threatStep = p.id2step(threat.id).get
+        val step1 = p.id2step(threat.threatened.id1).get
+        val step2 = p.id2step(threat.threatened.id2).get
+
+        val constraints = threatStep.pureConstraints ::: step1.pureConstraints ::: step2.pureConstraints
+        val newbind = p.binding.unify(threat.effect.negate, threat.threatened.condition, constraints, p.initialState)
+        val unified = newbind match {
+          case Some(nbind) => // unification successful
+            promote(p, threat, nbind).toList :::
+              demote(p, threat, nbind).toList
+          case None => Nil
+          // unification impossible. not need to demote or promote.
+          // separation must be possible. but it has been done earlier
+        }
+        // finally, link results of the two options
+        unified ::: separated
+      } else {
+        // the threat is not valid anymore
+        // just ignore it
+        val newplan = p.copy(
+          flaws = p.flaws - threat,
+          reason = "threat " + threat + " is no longer valid",
+          parent = p)
+        List(newplan)
+      }
     }
 
   def repairOpen(p: Plan, open: OpenCond): List[Plan] =
@@ -54,7 +92,7 @@ object FlawRepair {
                 // must respect constraints from both steps
                 val allConstraints = (p.id2step(open.id) map (_.constraints) getOrElse (Nil)) ::: (newStep.constraints filterNot { neqs contains (_) })
 
-                println("trying effect: " + effect)
+                println("trying inserting step " + newStep + " with effect: " + effect + " for " + open.condition)
                 neqbind.unify(effect, open.condition, allConstraints, init) match {
                   case Some(newbind: Binding) =>
                     var newordering =
@@ -70,16 +108,17 @@ object FlawRepair {
                       flaws = newStep.preconditions.map { p => new OpenCond(highStep, p) } ::: (p.flaws - open),
                       ordering = new Ordering(newordering ::: p.ordering.list),
                       reason = "Inserted action " + highStep + " to establish " + open.condition,
-                      parent = p)
+                      parent = p,
+                      stepCount = highStep)
 
-                    kid.stepCount += 1
+                    //kid.stepCount += 1
 
                     val threats = detectThreats(newStep, kid) ::: detectThreats(newLink, kid)
-                    
+
                     if (threats != Nil) // add detected threats into the plan
                       kids = kid.copy(flaws = threats ::: kid.flaws) :: kids
                     else kids = kid :: kids
-                    
+
                   case None =>
                 }
               }
@@ -89,51 +128,66 @@ object FlawRepair {
       kids
     }
 
+  def verifyThreat(threat: Threat, p: Plan): Boolean =
+    {
+      val stepid = threat.id
+      val link = threat.threatened
+      val possible = p.ordering.possiblyBefore(link.id2)
+      possible.contains(stepid) && p.binding.canUnify(threat.effect.negate, link.condition)
+    }
+
+  /**
+   * tests if the specified action contains effects that would threaten any links
+   * in the plan
+   */
   def detectThreats(step: Action, p: Plan): List[Threat] =
     {
-      // TODO: Test this method
       val before = p.ordering.possiblyBefore(step.id)
       val after = p.ordering.possiblyAfter(step.id)
 
       val threats = p.links filter { l =>
-        // tests three conditions of causal threats
-        before.contains(l.id1) && after.contains(l.id2) &&
-          {
-            step.effects exists { e =>
-              val negated = e.negate // compute a negated proposition
-              // make use of lazy evaluation to save computation
-              p.binding.canEqual(negated, l.condition) && p.binding.canUnify(negated, l.condition)
-            }
+        // tests the position of threatened link
+        before.contains(l.id1) && after.contains(l.id2)
+      } flatMap
+        { l =>
+          step.effects filter { effect =>
+            val negated = effect.negate // compute a negated proposition
+            // make use of lazy evaluation to save computation
+            p.binding.canEqual(negated, l.condition) && p.binding.canUnify(negated, l.condition)
+          } map { effect =>
+            new Threat(step.id, effect, l)
           }
-      } map { l =>
-        // make the threats
-        new Threat(step.id, l)
-      }
+        }
+
       threats
     }
 
+  /**
+   * tests if the specified link is threatened by any actions in the plan
+   *
+   */
   def detectThreats(newlink: Link, p: Plan): List[Threat] =
     {
-      // TODO: Test this method
       val possible = p.ordering.possiblyBefore(newlink.id2)
 
       val threats = p.steps filter { step =>
         // tests three conditions of causal threats
-        possible.contains(step.id) &&
-          {
-            step.effects exists { e =>
-              val negated = e.negate // compute a negated proposition
-              // make use of lazy evaluation to save computation
-              p.binding.canEqual(negated, newlink.condition) && p.binding.canUnify(negated, newlink.condition)
-            }
+        possible.contains(step.id)
+      } flatMap {
+        step =>
+          step.effects filter { effect =>
+            val negated = effect.negate // compute a negated proposition
+            // make use of lazy evaluation to save computation
+            p.binding.canEqual(negated, newlink.condition) && p.binding.canUnify(negated, newlink.condition)
+          } map {
+            effect =>
+              new Threat(step.id, effect, newlink)
           }
-      } map { step =>
-        // make the threats
-        new Threat(step.id, newlink)
       }
+
       threats
     }
-  //  
+
   def reuseActions(p: Plan, open: OpenCond): List[Plan] =
     {
       var kids = List[Plan]()
@@ -146,7 +200,7 @@ object FlawRepair {
             effect =>
               if (p.binding.substVars(effect).equalsIgnoreVars(open.condition)) // filtering obviously impossible effects
               {
-                println("trying effect: " + stepId + ": "+ effect)
+                println("trying effect: " + stepId + ": " + effect + " for " + open.condition)
                 p.binding.unify(effect, open.condition, step.constraints, init) match {
                   case Some(newbind: Binding) =>
                     var newordering = List(((stepId, open.id)))
@@ -187,37 +241,33 @@ object FlawRepair {
           reason = "Closed World Assumption: " + open.condition,
           parent = p)
       }
-
     }
 
-  def promote(p: Plan, promoted: Int, top: Int): List[Plan] =
+  def promote(p: Plan, threat: Threat, bind: Binding): Option[Plan] =
     {
-      Nil
+      val promoted = threat.id
+      val top = threat.threatened.id1
+      if (p.ordering.possiblyBefore(top).contains(promoted))
+        new Some(p.copy(
+          ordering = p.ordering + ((promoted, top)),
+          binding = bind,
+          flaws = p.flaws - threat,
+          reason = "promoting step " + promoted + " before " + top,
+          parent = p))
+      else None
     }
 
-  def demote(p: Plan, demoted: Int, bottom: Int): List[Plan] =
+  def demote(p: Plan, threat: Threat, bind: Binding): Option[Plan] =
     {
-      Nil
+      val demoted = threat.id
+      val bottom = threat.threatened.id2
+      if (p.ordering.possiblyAfter(bottom).contains(demoted))
+        new Some(p.copy(
+          ordering = p.ordering + ((bottom, demoted)),
+          binding = bind,
+          flaws = p.flaws - threat,
+          reason = "demoting step " + demoted + " after " + bottom,
+          parent = p))
+      else None
     }
-  //  private def bindInNewPlan(p: Plan, step: plan.Action, effect: variable.Proposition, open: OpenCond, init: List[variable.Proposition]): Unit = 
-  //    {  val stepId = step.id
-  //    if (p.binding.substVars(effect).equalsIgnoreVars(open.condition)) // filtering obviously impossible effects
-  //    {
-  //      println("trying effect: " + effect)
-  //      p.binding.unify(effect, open.condition, step.constraints, init) match {
-  //        case Some(newbind: Binding) =>
-  //          var newordering = List(((stepId, open.id)))
-  //
-  //          val kid = p.copy(
-  //            links = new Link(stepId, open.id, open.condition) :: p.links,
-  //            binding = newbind,
-  //            flaws = p.flaws - open,
-  //            ordering = new Ordering(newordering ::: p.ordering.list),
-  //            reason = "Reused action " + stepId + " to establish " + open.condition,
-  //            parent = p)
-  //          kids = detectThreats(kid) ::: kids
-  //        case None =>
-  //      }
-  //    }
-  //  }
 }

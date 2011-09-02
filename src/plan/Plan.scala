@@ -10,9 +10,10 @@ case class Plan(
     val flaws: List[Flaw],
     val reason: String,
     val parent: Plan,
-    var children: List[Plan]) {
+    var children: List[Plan],
+    val stepCount:Int = 0) {
 
-  var stepCount = 0;
+  //var stepCount = 0;
   override def toString(): String = "<Plan[" + id + "] #step=" + steps.length + ", #flaws=" + flaws.length + ">"
 
   def detailString(): String =
