@@ -1,0 +1,11 @@
+(problem
+(init 
+	(person tom)(person jack)
+	(has jack money)
+	(object money)
+)
+(goal
+	(has tom money)
+	(dead jack)
+)
+)

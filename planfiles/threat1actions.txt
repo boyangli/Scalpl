@@ -1,0 +1,11 @@
+(action kill (?p1 ?p2)
+	(constraints (person ?p1) (person ?p2) )
+	(preconditions (not (dead ?p1)) (not (dead ?p2)) )
+	(effects (dead ?p2))
+)
+
+(action give (?p1 ?p2 ?o)
+	(constraints (person ?p1) (person ?p2) (object ?o) (neq ?p1 ?p2))
+	(preconditions (has ?p1 ?o))
+	(effects (not (has ?p1 ?o)) (has ?p2 ?o))
+)
