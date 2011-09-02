@@ -7,8 +7,10 @@ object FlawRepair {
       val kids =
         selectFlaw(p) match {
           case open: OpenCond =>
+            println("repairing: " + open)
             repairOpen(p, open)
           case threat: Threat =>
+            println("repairing: " + threat)
             repairThreat(p, threat)
           case _ => throw new Exception("A flaw with no known repairs! " + p.flaws)
         }
@@ -41,34 +43,43 @@ object FlawRepair {
 
       Global.actionTemplates foreach {
         template =>
-          template.effects foreach {
+          // instantiate this template
+          val newStep = template.instantiate(highStep)
+          val neqs = newStep.constraints filter { _.verb == 'neq }
+          val neqbind = p.binding.addNeqs(neqs)
+          newStep.effects foreach {
             effect =>
-              if (effect.equalsIgnoreVars(open.condition)) // filtering obviously impossible effects
+              if (neqbind.canUnify(effect, open.condition)) // filtering obviously impossible effects
               {
-                // instantiate this effect
-                val ie = effect.instantiate(highStep)
                 // must respect constraints from both steps
-                val allConstraints = (p.id2step(open.id) map (_.constraints) getOrElse (Nil)) ::: template.constraints
+                val allConstraints = (p.id2step(open.id) map (_.constraints) getOrElse (Nil)) ::: (newStep.constraints filterNot { neqs contains (_) })
 
-                println("trying effect: " + ie)
-                p.binding.unify(ie, open.condition, allConstraints, init) match {
+                println("trying effect: " + effect)
+                neqbind.unify(effect, open.condition, allConstraints, init) match {
                   case Some(newbind: Binding) =>
                     var newordering =
                       if (open.id == Global.GOAL_ID)
                         List(((highStep, open.id)), ((0, highStep)))
                       else List(((highStep, open.id)), ((0, highStep)), (highStep, Global.GOAL_ID))
 
-                    val newStep = template.instantiate(highStep)
+                    val newLink = new Link(highStep, open.id, open.condition)
                     val kid = p.copy(
                       steps = newStep :: p.steps,
-                      links = new Link(highStep, open.id, open.condition) :: p.links,
+                      links = newLink :: p.links,
                       binding = newbind,
-                      flaws = p.flaws - open,
+                      flaws = newStep.preconditions.map { p => new OpenCond(highStep, p) } ::: (p.flaws - open),
                       ordering = new Ordering(newordering ::: p.ordering.list),
                       reason = "Inserted action " + highStep + " to establish " + open.condition,
                       parent = p)
 
-                    kids = detectThreats(newStep, kid) :: kids
+                    kid.stepCount += 1
+
+                    val threats = detectThreats(newStep, kid) ::: detectThreats(newLink, kid)
+                    
+                    if (threats != Nil) // add detected threats into the plan
+                      kids = kid.copy(flaws = threats ::: kid.flaws) :: kids
+                    else kids = kid :: kids
+                    
                   case None =>
                 }
               }
@@ -78,9 +89,9 @@ object FlawRepair {
       kids
     }
 
-  def detectThreats(step: Action, p: Plan): Plan =
+  def detectThreats(step: Action, p: Plan): List[Threat] =
     {
-    // TODO: Test this method
+      // TODO: Test this method
       val before = p.ordering.possiblyBefore(step.id)
       val after = p.ordering.possiblyAfter(step.id)
 
@@ -90,16 +101,37 @@ object FlawRepair {
           {
             step.effects exists { e =>
               val negated = e.negate // compute a negated proposition
-              p.binding.canEqual(negated, l.condition)
+              // make use of lazy evaluation to save computation
+              p.binding.canEqual(negated, l.condition) && p.binding.canUnify(negated, l.condition)
             }
           }
       } map { l =>
         // make the threats
         new Threat(step.id, l)
       }
-      if (threats.isEmpty) p
-      else
-        p.copy(flaws = threats ::: p.flaws)
+      threats
+    }
+
+  def detectThreats(newlink: Link, p: Plan): List[Threat] =
+    {
+      // TODO: Test this method
+      val possible = p.ordering.possiblyBefore(newlink.id2)
+
+      val threats = p.steps filter { step =>
+        // tests three conditions of causal threats
+        possible.contains(step.id) &&
+          {
+            step.effects exists { e =>
+              val negated = e.negate // compute a negated proposition
+              // make use of lazy evaluation to save computation
+              p.binding.canEqual(negated, newlink.condition) && p.binding.canUnify(negated, newlink.condition)
+            }
+          }
+      } map { step =>
+        // make the threats
+        new Threat(step.id, newlink)
+      }
+      threats
     }
   //  
   def reuseActions(p: Plan, open: OpenCond): List[Plan] =
@@ -114,7 +146,7 @@ object FlawRepair {
             effect =>
               if (p.binding.substVars(effect).equalsIgnoreVars(open.condition)) // filtering obviously impossible effects
               {
-                println("trying effect: " + effect)
+                println("trying effect: " + stepId + ": "+ effect)
                 p.binding.unify(effect, open.condition, step.constraints, init) match {
                   case Some(newbind: Binding) =>
                     var newordering = List(((stepId, open.id)))
@@ -126,7 +158,7 @@ object FlawRepair {
                       ordering = new Ordering(newordering ::: p.ordering.list),
                       reason = "Reused action " + stepId + " to establish " + open.condition,
                       parent = p)
-                      
+
                     kids = kid :: kids
                   case None =>
                 }

@@ -15,7 +15,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) {
     val bind = new Binding(hashes.clone())
     vs.equals.foreach(v => bind.hashes += (v -> vs))
     if (vs.isGrounded())
-    	bind.hashes += (vs.symbol -> vs)
+      bind.hashes += (vs.symbol -> vs)
     bind
   }
 
@@ -25,133 +25,17 @@ class Binding private (val hashes: HashMap[Token, VarSet]) {
     vss foreach { vs =>
       vs.equals.foreach(v => bind.hashes += (v -> vs))
       if (vs.isGrounded())
-    	  bind.hashes += (vs.symbol -> vs)
+        bind.hashes += (vs.symbol -> vs)
     }
     bind
   }
-  
-  def get(token:Token) = hashes.get(token)
+
+  def get(token: Token) = hashes.get(token)
 
   override def toString(): String =
     {
       hashes.values.mkString("\n")
     }
-
-  /**
-   *  returns (?, ?) if two variables can unify. the second ? can be null, indicating no actions are needed.
-   *  Otherwise, return null
-   */
-  def canUnify(v1: Variable, v2: Variable): (Variable, Token) =
-    {
-      val svs1 = hashes.get(v1)
-      val svs2 = hashes.get(v2)
-
-      (svs1, svs2) match {
-        case (Some(vs1), Some(vs2)) =>
-          {
-            if (vs1 == vs2)
-              (v1, null)
-            else if (!vs1.isGrounded() && !vs2.nonEquals.contains(v1))
-              (v1, v2)
-            else if (!vs2.isGrounded && !vs1.nonEquals.contains(v2))
-              (v2, v1)
-            else null
-          }
-        case (Some(vs1), None) =>
-          {
-            if (!vs1.nonEquals.contains(v2))
-              (v2, v1)
-            else null
-          }
-        case (None, Some(vs2)) =>
-          {
-            if (!vs2.nonEquals.contains(v1))
-              (v1, v2)
-            else null
-          }
-        case (None, None) =>
-          {
-            (v1, v2)
-          }
-      }
-    }
-
-  //  def canUnify(token1: Token, token2: Token, constraints: List[Proposition], inits: List[Proposition]): Boolean =
-  //    {
-  //      (token1, token2) match {
-  //        case (s1: PopSymbol, s2: PopSymbol) =>
-  //          {
-  //            if (s1 == s2)
-  //              true
-  //            else false
-  //          }
-  //        case (v: Variable, s: PopSymbol) =>
-  //          {
-  //            canUnifyVS(v, s, constraints, inits)
-  //          }
-  //        case (s: PopSymbol, v: Variable) =>
-  //          {
-  //            canUnifyVS(v, s, constraints, inits)
-  //          }
-  //        case (v1: Variable, v2: Variable) =>
-  //          {
-  //            canUnifyVV(v1, v2, constraints, inits)
-  //          }
-  //      }
-  //    }
-  //
-  def canUnifyVS(v: Variable, s: Symbol, constraints: List[Proposition], inits: List[Proposition]): Boolean =
-    {
-      hashes.get(v) match {
-        case Some(varset: VarSet) =>
-          {
-            if (varset.symbol == s) // already bound. trivial case
-              return true
-            else if (varset.nonEquals.contains(s)) // already non-equal. another trivial case
-              return false
-            // v has no relations with s. Hence, we cannot filter here
-          }
-        case None =>
-      }
-      // this is the more tedious test used when the relation between v and s is not obvious
-      // we attempt to substitute all known variables in the constraints list
-      // and then compare to the initial state
-      val realCons = constraints.map(this.substVars(_, v, s))
-      for (pc <- realCons) {
-        // at least one condition in the initial state must equal to pc if we ignore unbound variables
-        val possible = inits.exists(pi => pi.equalsIgnoreVars(pc))
-        if (!possible) return false
-      }
-      true
-    }
-
-  // TODO: 8/21 fix this
-  //  def canUnifyVV(v1: Variable, v2: Variable, constraints: List[Proposition], inits: List[Proposition]): Boolean =
-  //    {
-  //      // do trivial filtering here
-  //      hashes.get(v) match {
-  //        case Some(varset: VarSet) =>
-  //          {
-  //            if (varset.symbol == s) // already bound. trivial case
-  //              return true
-  //            else if (varset.nonEquals.contains(s)) // already non-equal. another trivial case
-  //              return false
-  //            // v has no relations with s. Hence, we cannot filter here
-  //          }
-  //        case None =>
-  //      }
-  //      // this is the more tedious test used when the relation between v and s is not obvious
-  //      // we attempt to substitute all known variables in the constraints list
-  //      // and then compare to the initial state
-  //      val realCons = constraints.map(this.substVars(_, v, s))
-  //      for (pc <- realCons) {
-  //        // at least one condition in the initial state must equal to pc if we ignore unbound variables
-  //        val possible = inits.exists(pi => pi.equalsIgnoreVars(pc))
-  //        if (!possible) return false
-  //      }
-  //      true
-  //    }
-  //
 
   /**
    * attempts to build a consistent variable binding that 1) make p1 and p2 equivalent,
@@ -169,6 +53,56 @@ class Binding private (val hashes: HashMap[Token, VarSet]) {
       if (!isPairConsistent(valued)) return None
       // step 4: check for constraints
       unifyWithConstraints(valued, constraints, initial)
+    }
+
+  /**
+   * superficially tests for unification
+   *
+   */
+  def canUnify(p1: Proposition, p2: Proposition): Boolean =
+    {
+      // step 1: match tokens pairwise
+      val matched = matchTokens(p1, p2)
+      if (matched isEmpty) return false // fail to match the two propositions
+      // step 2: retrieve known values for variables that are already bound
+      val valued = revealTokenValues(matched.get)
+      // step 3: check for superficial inconsistencies. If there is, return None
+      if (!isPairConsistent(valued)) return false
+      else return true
+    }
+
+  /**
+   * directly unify without testing for superficial inconsistency
+   * still tests for consistency with constraints
+   *
+   */
+  def directUnify(p1: Proposition, p2: Proposition, constraints: List[Proposition], initial: List[Proposition]): Option[Binding] =
+    {
+      // step 1: match tokens pairwise
+      val matched = matchTokens(p1, p2)
+      val valued = revealTokenValues(matched.get)
+      unifyWithConstraints(valued, constraints, initial)
+    }
+
+  def addNeqs(neqs: List[Proposition]): Binding =
+    {
+      var newbind = this
+      neqs foreach { neq =>
+        val item1 = neq.termlist(0).asInstanceOf[Token]
+        val item2 = neq.termlist(1).asInstanceOf[Token]
+
+        (get(item1), get(item2)) match {
+          case (Some(vs1: VarSet), Some(vs2: VarSet)) =>
+            newbind += (vs1.bindNotTo(vs2.equals), vs2.bindNotTo(vs1.equals))
+          case (Some(vs1: VarSet), None) =>
+            newbind += (vs1.bindNotTo(item2), VarSet(item2).bindNotTo(item1))
+          case (None, Some(vs2: VarSet)) =>
+            newbind += (VarSet(item1).bindNotTo(item2), vs2.bindNotTo(item1))
+          case (None, None) =>
+            newbind += (VarSet(item1).bindNotTo(item2), VarSet(item2).bindNotTo(item1))
+        }
+      }
+      newbind
     }
 
   /**
@@ -229,10 +163,11 @@ class Binding private (val hashes: HashMap[Token, VarSet]) {
         })
     }
 
-  /** Checks if a list of token pairs is consistent. Two tokens in a "consistent" pair can be bound to the same value.
+  /**
+   * Checks if a list of token pairs is consistent. Two tokens in a "consistent" pair can be bound to the same value.
    * That is, their existing constraints do not prevent them from being the same.
    * However, they may not have been bound to the same value yet, and it is ok.
-   * 
+   *
    */
   private def isPairConsistent(list: List[(Token, Token)]): Boolean =
     {
@@ -255,12 +190,11 @@ class Binding private (val hashes: HashMap[Token, VarSet]) {
           case (s1: PopSymbol, s2: PopSymbol) => s1 == s2
           }
           */
-        x =>          
+        x =>
           println("comparing pair: " + x)
-          (x._1 == x._2) || (x match
-          {
-            case (s1:PopSymbol, s2:PopSymbol) => s1 == s2
-            case (t1, t2) =>            
+          (x._1 == x._2) || (x match {
+            case (s1: PopSymbol, s2: PopSymbol) => s1 == s2
+            case (t1, t2) =>
               (hashes.get(t1), hashes.get(t2)) match {
                 case (Some(vs1: VarSet), Some(vs2: VarSet)) => vs1.isCompatibleWith(vs2)
                 case _ => true
@@ -297,16 +231,16 @@ class Binding private (val hashes: HashMap[Token, VarSet]) {
             {
               (hashes.get(v1), hashes.get(v2)) match {
                 case (Some(vs1: VarSet), Some(vs2: VarSet)) =>
-                  //println("unifying: " + vs1 + " " + vs2)
+                  println("unifying: " + vs1 + " " + vs2)
                   bind += vs1.mergeWith(vs2)
                 case (Some(vs1: VarSet), None) =>
-                  //println("unifying: " + vs1 + " " + v2)
+                  println("unifying: " + vs1 + " " + v2)
                   bind += vs1.bindTo(v2)
                 case (None, Some(vs2: VarSet)) =>
-                  //println("unifying: " + v1 + " " + vs2)
+                  println("unifying: " + v1 + " " + vs2)
                   bind += vs2.bindTo(v1)
                 case (None, None) =>
-                  //println("new varset for: " + v1 + " " + v2)
+                  println("new varset for: " + v1 + " " + v2)
                   bind += VarSet(v1, v2)
               }
             }
@@ -315,7 +249,14 @@ class Binding private (val hashes: HashMap[Token, VarSet]) {
       // check with initials
       val substProps = constraints map { bind substVars _ }
       println("substed props:" + substProps.mkString("\n"))
-      if (substProps forall { p => initial exists { _ equalsIgnoreVars p } })
+      if (substProps forall { p =>
+        initial exists {
+          x =>
+            if (x equalsIgnoreVars p) { println("substed: " + substVars(x) + "\n" + substVars(p)) }
+
+            x equalsIgnoreVars p
+        }
+      })
         Some(bind)
       else None
     }
@@ -363,8 +304,8 @@ class Binding private (val hashes: HashMap[Token, VarSet]) {
                   answer += bind
               }
             }
-//          case (v1:Variable, s2:PopSymbol) =>
-//          case (s1:PopSymbol, v2:Variable) =>
+          //          case (v1:Variable, s2:PopSymbol) =>
+          //          case (s1:PopSymbol, v2:Variable) =>
         }
       }
       answer.toList
@@ -403,10 +344,15 @@ class Binding private (val hashes: HashMap[Token, VarSet]) {
         case other => other
       }))
     }
-  
-  /** tests if two propositions may be equal after considering current bound variables in them
-   * 
+
+  /**
+   * tests if two propositions may be equal after considering current bound variables in them
+   *
    */
-  def canEqual(p1:Proposition, p2:Proposition) =
-		  substVars(p1) equalsIgnoreVars substVars(p2)
+  def canEqual(p1: Proposition, p2: Proposition) =
+    substVars(p1) equalsIgnoreVars substVars(p2)
+}
+
+object Binding {
+  def apply() = new Binding()
 }

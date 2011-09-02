@@ -24,25 +24,24 @@ case class Plan(
       desc += "reason: " + reason + "\n"
       desc
     }
-  
-  def planString():String = 
-  {
-    var desc = ""
-    val order = ordering.topsort() 
-     
-        for (i <- order if i != 0 && i != Global.GOAL_ID) 
-        {
-        	steps.find(_.id == i) match
-        	{
-        	  case Some(x) => desc += "[" + i + "] " + binding.substVars(x)
-        	  case _ => ""
-        	}
+
+  def planString(): String =
+    {
+      var desc = ""
+      //println(ordering.allIDs)
+      val order = ordering.topsort()
+      //print("order "+ order)
+      for (i <- order if i != 0 && i != Global.GOAL_ID) {
+        steps.find(_.id == i) match {
+          case Some(x) => desc += "[" + i + "] " + binding.substVars(x) + "\n"
+          case _ => ""
         }
+      }
       desc
-  }
-  
-  def id2step(id:Int):Option[Action] = steps.find{_.id == id} 
-  
+    }
+
+  def id2step(id: Int): Option[Action] = steps.find { _.id == id }
+
   def initialState() = steps.find(_.id == 0).get.effects // initial state
 }
 
@@ -63,11 +62,11 @@ object Plan {
 class Ordering(val list: List[(Int, Int)]) {
 
   lazy val allIDs = list.flatMap(x => List(x._1, x._2)).distinct
-  
+
   def this() = this(List[(Int, Int)]())
 
   def +(x: (Int, Int)) = new Ordering(x :: list)
-  
+
   def topsort(): List[Int] =
     {
       var order = list
@@ -78,17 +77,18 @@ class Ordering(val list: List[(Int, Int)]) {
       var top: List[Int] = all.filterNot(x => order.exists(y => y._2 == x))
 
       while (top.length > 0) {
+        //print("top:" + top)
         val parent: Int = top.head
         top = top.tail
-        //        println("remove " + parent)
+        //println("remove " + parent)
         ans = parent :: ans
-        val children = order.filter(_._1 == parent).map(_._2)
+        val children = order.filter(_._1 == parent).map(_._2).distinct
         for (child <- children) {
           //          println(parent + " 's child = " + child)
           // remove the ordering pair (parent, child) from the order list
           order = order.filterNot(_ == (parent, child))
           // if the child has no more nodes before it
-          // add it to top
+          // then: add it to top
           if (!order.exists(_._2 == child)) {
             //            println("add " + child + " to top")
             top = child :: top
@@ -148,24 +148,24 @@ class Ordering(val list: List[(Int, Int)]) {
 
       ans.distinct
     }
-  
-  def possiblyBefore(node: Int):List[Int] = 
-  {
-    allIDs filterNot{ nodesAfter(node) contains(_) }
-  }
-  
-  def possiblyAfter(node: Int):List[Int] = 
-  {
-    allIDs filterNot{ nodesBefore(node) contains(_) }
-  }
-  
-  override def toString():String =
-  {
-    list map {pair =>
-      if(pair._2 == Global.GOAL_ID) (pair._1.toString, "goal")
-      else pair
-    } mkString(", ")
-  }
+
+  def possiblyBefore(node: Int): List[Int] =
+    {
+      allIDs filterNot { x => nodesAfter(node).contains(x) || x == node }
+    }
+
+  def possiblyAfter(node: Int): List[Int] =
+    {
+      allIDs filterNot { x => nodesBefore(node).contains(x) || x == node }
+    }
+
+  override def toString(): String =
+    {
+      list map { pair =>
+        if (pair._2 == Global.GOAL_ID) (pair._1.toString, "goal")
+        else pair
+      } mkString (", ")
+    }
 }
 
 object OrderingTest {
