@@ -6,6 +6,6 @@
 
 (action give (?p1 ?p2 ?o)
 	(constraints (person ?p1) (person ?p2) (object ?o) (neq ?p1 ?p2))
-	(preconditions (has ?p1 ?o))
+	(preconditions (has ?p1 ?o) (not (dead ?p1)) (not (dead ?p2)))
 	(effects (not (has ?p1 ?o)) (has ?p2 ?o))
 )
