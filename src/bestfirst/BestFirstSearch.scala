@@ -1,13 +1,15 @@
 package bestfirst
 
 import scala.collection.mutable.PriorityQueue
+import plan._
+import logging._
 
-class BestFirstSearch[N](
+class BestFirstSearch[N] (
     val init: List[N],
     val refine: N => List[N],
     val isComplete: N => Boolean,
     val evaluate: N => Double,
-    val parameter: SearchParameter) {
+    val parameter: SearchParameter) extends Logging {
 
   val queue = new PriorityQueue[ValuedNode[N]]()
   val stats = new SearchStats
@@ -21,14 +23,19 @@ class BestFirstSearch[N](
       while (!queue.isEmpty) {
 
         // print queue status here
-        println("***\nqueue status: \n" +
-          queue.map(node => node.content + " = " + node.value + "\n").mkString +
-          "****\n")
+        debug("***\nqueue status: \n" +
+          queue.map(node => node.content + " = " + node.value + "\n").mkString)
 
         val best = queue.dequeue().content
         if (isComplete(best)) {
           stats.finish()
           return best
+        }
+        
+        debug
+        {
+          val plan = best.asInstanceOf[Plan]
+          "refining :" + plan + "\n"  + plan.detailString()
         }
         val children = refine(best)
         addToQueue(children)

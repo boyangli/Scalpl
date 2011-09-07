@@ -1,0 +1,11 @@
+(action put-on (?b1 ?s1 ?b2)
+	(constraints (block ?b1) (block ?b2))
+	(preconditions (clear ?b2) (clear ?b1) (on-top ?b1 ?s1))
+	(effects (not (clear ?b2)) (clear ?s1) (on-top ?b1 ?b2) (not (on-top ?b1 ?s1)))
+	)
+	
+(action move-to-table (?b1 ?b2)
+	(constraints (block ?b1) (block ?b2))
+	(preconditions (clear ?b1) (on-top ?b1 ?b2))
+	(effects (clear ?b2) (not (on-top ?b1 ?b2)) (on-top ?b1 table))
+	)

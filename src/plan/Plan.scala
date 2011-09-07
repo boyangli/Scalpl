@@ -2,16 +2,16 @@ package plan
 import variable._
 
 case class Plan(
-    val id: Int,
-    val steps: List[Action],
-    val links: List[Link],
-    val ordering: Ordering,
-    val binding: Binding,
-    val flaws: List[Flaw],
-    val reason: String,
-    val parent: Plan,
-    var children: List[Plan],
-    val stepCount: Int = 0) {
+  val id: Int,
+  val steps: List[Action],
+  val links: List[Link],
+  val ordering: Ordering,
+  val binding: Binding,
+  val flaws: List[Flaw],
+  val reason: String,
+  val parent: Plan,
+  var children: List[Plan],
+  val stepCount: Int = 0) {
 
   //var stepCount = 0;
   override def toString(): String = "<Plan[" + id + "] #step=" + steps.length + ", #flaws=" + flaws.length + ">"
@@ -28,6 +28,9 @@ case class Plan(
 
   def planString(): String =
     {
+      // a plan without steps
+      if (steps.length <= 2) return "Plan[" + id + "] with 0 steps"
+
       var desc = ""
       //println(ordering.allIDs)
       val order = ordering.topsort()

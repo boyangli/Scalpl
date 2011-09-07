@@ -9,12 +9,13 @@ object Main {
     //    val actions = ActionParser.readFile("./planfiles/actions.txt")
     //    val problem = ProblemParser.readFile("./planfiles/problem.txt")
 
-    val actions = ActionParser.readFile("./planfiles/test1.act")
-    val problem = ProblemParser.readFile("./planfiles/test1.prob")
+    val actions = ActionParser.readFile("./planfiles/block1.act")
+    val problem = ProblemParser.readFile("./planfiles/block1.prob")
 
     Global.init(actions, problem)
     var plan = Global.initPlan()
-    val parameter = new SearchParameter(50)
+    //Global.debug = true
+    val parameter = new SearchParameter(500)
     val bestfirst = new BestFirstSearch[Plan](List(plan), FlawRepair.refine _, complete _, eval _, parameter)
 
     try {
@@ -22,6 +23,7 @@ object Main {
       println("*************************")
       println("Found plan: " + result)
       println(result.planString())
+      println(result.detailString())
     } catch {
       case e: Exception =>
         println("Search Failed: " + e.getMessage)
@@ -44,7 +46,9 @@ object Main {
 
   def eval(p: Plan): Double =
     {
-      p.flaws.length + p.steps.length
+      if (p.flaws == Nil) 0
+      else
+        p.flaws.length + p.steps.length
     }
 
 }

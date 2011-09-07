@@ -13,6 +13,7 @@ object Global {
   var initialPlan: Plan = null
   var planVisited = 0
   protected var planGenerated = 0
+  var debug = false
 
   def obtainID() =
     {

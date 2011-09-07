@@ -1,11 +1,12 @@
 package variable
 
 import scala.collection.mutable.HashMap
+import logging._
 import scala.collection.mutable.ListBuffer
 import PopSymbol._
 import plan._
 
-class Binding private (val hashes: HashMap[Token, VarSet]) {
+class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
   //  var varsets = List[VarSet]()
   //  val hashes = new HashMap[Variable, VarSet]()
   // 
@@ -177,7 +178,6 @@ class Binding private (val hashes: HashMap[Token, VarSet]) {
     {
       list.forall {
         x =>
-          print("comparing pair for consistency: " + x + ": ")
           val b =
             (x._1 == x._2) || (x match {
               case (s1: PopSymbol, s2: PopSymbol) => s1 == s2
@@ -187,12 +187,13 @@ class Binding private (val hashes: HashMap[Token, VarSet]) {
                   case _ => true
                 }
             })
-          println(b)
+
+          debug("comparing pair for consistency: " + x + ": " + b)
           b
       }
     }
 
-  private def unifyWithConstraints(list: List[(Token, Token)], constraints: List[Proposition], initial: List[Proposition]): Option[Binding] =
+  def unifyWithConstraints(list: List[(Token, Token)], constraints: List[Proposition], initial: List[Proposition]): Option[Binding] =
     {
       var bind: Binding = this
       list.foreach {
@@ -203,16 +204,16 @@ class Binding private (val hashes: HashMap[Token, VarSet]) {
             {
               (hashes.get(v1), hashes.get(v2)) match {
                 case (Some(vs1: VarSet), Some(vs2: VarSet)) =>
-                  println("unifying: " + vs1 + " " + vs2)
+                  debug("unifying: " + vs1 + " " + vs2)
                   bind += vs1.mergeWith(vs2)
                 case (Some(vs1: VarSet), None) =>
-                  println("unifying: " + vs1 + " " + v2)
+                  debug("unifying: " + vs1 + " " + v2)
                   bind += vs1.bindTo(v2)
                 case (None, Some(vs2: VarSet)) =>
-                  println("unifying: " + v1 + " " + vs2)
+                  debug("unifying: " + v1 + " " + vs2)
                   bind += vs2.bindTo(v1)
                 case (None, None) =>
-                  println("new varset for: " + v1 + " " + v2)
+                  debug("new varset for: " + v1 + " " + v2)
                   bind += VarSet(v1, v2)
               }
             }
@@ -220,13 +221,15 @@ class Binding private (val hashes: HashMap[Token, VarSet]) {
       }
       // check with initials
       val substProps = constraints map { bind substVars _ }
-      println(constraints.mkString("\n"))
-      println(substProps.mkString("substed props:", "\n", "--end"))
+      debug("all constraints: " + constraints.mkString("\n"))
+      debug(substProps.mkString("substed props:", ", ", "--end"))
       if (substProps.forall { p: Proposition =>
         initial exists {
           x =>
-            if (x equalsIgnoreVars p) { println("equaled: substed: " + substVars(x) + "\n" + substVars(p)) }
-
+            debug {
+              if (x equalsIgnoreVars p) "equaled: substed: " + substVars(x) + "\n" + substVars(p)
+              else ""
+            }
             x equalsIgnoreVars p
         }
       } || substProps == Nil)

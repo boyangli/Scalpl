@@ -1,18 +1,17 @@
 package plan
 import variable._
-object FlawRepair {
+import logging._
+object FlawRepair extends Logging{
 
   def refine(p: Plan): List[Plan] =
     {
-    if (p.id==8)
-      println("this is 8")
       val kids =
         selectFlaw(p) match {
           case open: OpenCond =>
-            println("repairing: " + open)
+            debug("repairing: " + open)
             repairOpen(p, open)
           case threat: Threat =>
-            println("repairing: " + threat)
+            debug("repairing: " + threat)
             repairThreat(p, threat)
           case _ => throw new Exception("A flaw with no known repairs! " + p.flaws)
         }
@@ -26,8 +25,10 @@ object FlawRepair {
         // the threat is still valid
         //var answer = List[Plan]()
         // first option: separate the two conflicting conditions
+        
         val separated = p.binding.separate(threat.effect.negate, threat.threatened.condition) map {
           newbind =>
+            debug("Separation succeeds")
             p.copy(
               id = Global.obtainID(),
               binding = newbind,
@@ -96,10 +97,10 @@ object FlawRepair {
                 // must respect constraints from both steps
                 val allConstraints = ((p.id2step(open.id) map (_.constraints) getOrElse (Nil)) ::: (newStep.constraints)) filterNot (_.verb == 'neq)
 
-                //println("trying inserting step " + newStep + " with effect: " + effect + " for " + open.condition)
-                neqbind.unify(effect, open.condition, allConstraints, init) match {
+                debug("trying inserting step " + newStep + " with effect: " + effect + " for " + open.condition)
+                neqbind.directUnify(effect, open.condition, allConstraints, init) match {
                   case Some(newbind: Binding) =>
-                    //println("can insert")
+                    debug("unification succeeds")
                     var newordering =
                       if (open.id == Global.GOAL_ID)
                         List(((highStep, open.id)), ((0, highStep)))
@@ -125,7 +126,7 @@ object FlawRepair {
                       kids = kid.copy(flaws = threats ::: kid.flaws) :: kids
                     else kids = kid :: kids
 
-                  case None =>
+                  case None => debug("unification failed")
                 }
               }
           }
@@ -198,7 +199,7 @@ object FlawRepair {
     {
       var kids = List[Plan]()
       val init = p.steps.find(_.id == 0).get.effects // initial state
-      val possibleActions = p.ordering.possiblyBefore(open.id) map { p.id2step(_) } filterNot { _.isEmpty } map { _.get }
+      val possibleActions = p.ordering.possiblyBefore(open.id) flatMap { p.id2step(_) }
       possibleActions foreach {
         step =>
           val stepId = step.id
@@ -206,9 +207,10 @@ object FlawRepair {
             effect =>
               if (p.binding.substVars(effect).equalsIgnoreVars(open.condition)) // filtering obviously impossible effects
               {
-                println("trying effect: " + stepId + ": " + effect + " for " + open.condition)
+                debug("trying to reuse effect: " + stepId + ": " + effect + " for " + open.condition)
                 p.binding.unify(effect, open.condition, step.constraints, init) match {
                   case Some(newbind: Binding) =>
+                    debug("reuse succeeds")
                     var newordering = List(((stepId, open.id)))
 
                     val kid = p.copy(
@@ -221,7 +223,7 @@ object FlawRepair {
                       parent = p)
 
                     kids = kid :: kids
-                  case None =>
+                  case None => debug ("reuse failed")
                 }
               }
           }

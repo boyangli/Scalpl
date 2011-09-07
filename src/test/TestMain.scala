@@ -10,24 +10,30 @@ import plan._
 object TestMain {
 
   def main(args: Array[String]) {
-    val actions = ActionParser.readFile("./planfiles/test1.act")
-    val problem = ProblemParser.readFile("./planfiles/test1.prob")
+    val actions = ActionParser.readFile("./planfiles/block1.act")
+    val problem = ProblemParser.readFile("./planfiles/block1.prob")
 
     Global.init(actions, problem)
     var plan = Global.initPlan()
+    Global.debug = true
     var plans = List(plan)
-    for(i <- 0 to 7)
-    {
+    plans = FlawRepair.refine(plan)
+    plan = plans(0)
+    println(plans.map(_.planString() + "\n").mkString("1st plans: ", "", "---end"))
+    println(plan.planString())
+    plans = FlawRepair.refine(plan)
+    for (i <- 0 to 2) {
       println("****")
-      println(plans(0).planString())
-      plans = FlawRepair.refine(plans(0)) 
+      plan = plans.last
+      println(plan.planString())
+      plans = FlawRepair.refine(plan)
     }
     println(plans(0))
-    plans.foreach(x => println("\n"+x.detailString()+"\n"))
+    plans.foreach(x => println("\n" + x.detailString() + "\n"))
     println(plans(0).binding)
-    
-    plans = FlawRepair.refine(plans(0)) 
-    plans.foreach(x => println("\n"+x.detailString()+"\n"))
+
+    plans = FlawRepair.refine(plans(0))
+    plans.foreach(x => println("\n" + x.detailString() + "\n"))
   }
 }
 
