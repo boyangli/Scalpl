@@ -4,6 +4,8 @@ object FlawRepair {
 
   def refine(p: Plan): List[Plan] =
     {
+    if (p.id==8)
+      println("this is 8")
       val kids =
         selectFlaw(p) match {
           case open: OpenCond =>
@@ -27,6 +29,7 @@ object FlawRepair {
         val separated = p.binding.separate(threat.effect.negate, threat.threatened.condition) map {
           newbind =>
             p.copy(
+              id = Global.obtainID(),
               binding = newbind,
               flaws = p.flaws - threat,
               reason = "separating " + threat.effect + " and " + threat.threatened.condition,
@@ -55,6 +58,7 @@ object FlawRepair {
         // the threat is not valid anymore
         // just ignore it
         val newplan = p.copy(
+          id = Global.obtainID(),
           flaws = p.flaws - threat,
           reason = "threat " + threat + " is no longer valid",
           parent = p)
@@ -90,11 +94,12 @@ object FlawRepair {
               if (neqbind.canUnify(effect, open.condition)) // filtering obviously impossible effects
               {
                 // must respect constraints from both steps
-                val allConstraints = (p.id2step(open.id) map (_.constraints) getOrElse (Nil)) ::: (newStep.constraints filterNot { neqs contains (_) })
+                val allConstraints = ((p.id2step(open.id) map (_.constraints) getOrElse (Nil)) ::: (newStep.constraints)) filterNot (_.verb == 'neq)
 
-                println("trying inserting step " + newStep + " with effect: " + effect + " for " + open.condition)
+                //println("trying inserting step " + newStep + " with effect: " + effect + " for " + open.condition)
                 neqbind.unify(effect, open.condition, allConstraints, init) match {
                   case Some(newbind: Binding) =>
+                    //println("can insert")
                     var newordering =
                       if (open.id == Global.GOAL_ID)
                         List(((highStep, open.id)), ((0, highStep)))
@@ -102,6 +107,7 @@ object FlawRepair {
 
                     val newLink = new Link(highStep, open.id, open.condition)
                     val kid = p.copy(
+                      id = Global.obtainID(),
                       steps = newStep :: p.steps,
                       links = newLink :: p.links,
                       binding = newbind,
@@ -206,6 +212,7 @@ object FlawRepair {
                     var newordering = List(((stepId, open.id)))
 
                     val kid = p.copy(
+                      id = Global.obtainID(),
                       links = new Link(stepId, open.id, open.condition) :: p.links,
                       binding = newbind,
                       flaws = p.flaws - open,
@@ -235,6 +242,7 @@ object FlawRepair {
 
       bindings map { bind =>
         p.copy(
+          id = Global.obtainID(),
           links = new Link(0, open.id, open.condition) :: p.links,
           binding = bind,
           flaws = p.flaws - open,
@@ -249,6 +257,7 @@ object FlawRepair {
       val top = threat.threatened.id1
       if (p.ordering.possiblyBefore(top).contains(promoted))
         new Some(p.copy(
+          id = Global.obtainID(),
           ordering = p.ordering + ((promoted, top)),
           binding = bind,
           flaws = p.flaws - threat,
@@ -263,6 +272,7 @@ object FlawRepair {
       val bottom = threat.threatened.id2
       if (p.ordering.possiblyAfter(bottom).contains(demoted))
         new Some(p.copy(
+          id = Global.obtainID(),
           ordering = p.ordering + ((bottom, demoted)),
           binding = bind,
           flaws = p.flaws - threat,

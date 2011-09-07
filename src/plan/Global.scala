@@ -12,12 +12,12 @@ object Global {
   var goalState = List[Proposition]()
   var initialPlan: Plan = null
   var planVisited = 0
-  protected var prevId = 0
+  protected var planGenerated = 0
 
   def obtainID() =
     {
-      prevId += 1
-      prevId
+      planGenerated += 1
+      planGenerated
     }
 
   def init(actions: List[Action], problem: Problem) {

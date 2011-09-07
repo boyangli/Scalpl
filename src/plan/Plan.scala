@@ -11,7 +11,7 @@ case class Plan(
     val reason: String,
     val parent: Plan,
     var children: List[Plan],
-    val stepCount:Int = 0) {
+    val stepCount: Int = 0) {
 
   //var stepCount = 0;
   override def toString(): String = "<Plan[" + id + "] #step=" + steps.length + ", #flaws=" + flaws.length + ">"
@@ -19,7 +19,7 @@ case class Plan(
   def detailString(): String =
     {
       var desc = planString() + "\n"
-      desc += "flaws: \n" + flaws.mkString("\n")
+      desc += flaws.mkString("flaws: \n", "\n", "\n")
       desc += links.mkString("links: \n", "\n", "\n")
       desc += "orderings: \n" + ordering.toString() + "\n"
       desc += "reason: " + reason + "\n"
@@ -108,16 +108,16 @@ class Ordering(val list: List[(Int, Int)]) {
       var ans = List[Int]()
       var all = list.map(x => List(x._1, x._2)).flatten
       var top: List[Int] = order.filter(y => y._2 == node).map(_._1).distinct
-      println("top: " + top)
+      //println("top: " + top)
       while (top.length > 0) {
 
         val cur: Int = top.head
         top = top.tail
-        println("remove " + cur)
+        //println("remove " + cur)
         ans = cur :: ans
 
         val parents = order.filter(_._2 == cur).map(_._1)
-        println("parents: " + parents)
+        //println("parents: " + parents)
         order = order.filterNot(_._2 == cur)
         ans = parents ::: ans
         top = (parents ::: top).distinct

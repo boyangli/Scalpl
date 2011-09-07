@@ -135,10 +135,9 @@ class Binding private (val hashes: HashMap[Token, VarSet]) {
       (p1.termlist, p2.termlist).zipped.foreach((_, _) match {
         case (t1: Token, t2: Token) => answer += ((t1, t2))
         case (p1: Proposition, p2: Proposition) =>
-          matchTokens(p1, p2) match
-          {
-            case Some(l:List[(Token, Token)]) =>
-            	l.foreach{ answer += _} // recursive 
+          matchTokens(p1, p2) match {
+            case Some(l: List[(Token, Token)]) =>
+              l.foreach { answer += _ } // recursive 
             case None => return None
           }
         case _ => return None
@@ -177,34 +176,19 @@ class Binding private (val hashes: HashMap[Token, VarSet]) {
   private def isPairConsistent(list: List[(Token, Token)]): Boolean =
     {
       list.forall {
-
-        /* this is *probably* not the correct behavior
-          _ match {  
-          case (v1: Variable, v2: Variable) => (v1 == v2) ||
-            {
-              (hashes.get(v1), hashes.get(v2)) match {
-                case (Some(vs1: VarSet), Some(vs2: VarSet)) => vs1.isCompatibleWith(vs2)
-                case _ => true
-              }
-            }
-          case (s1: PopSymbol, v2: Variable) =>
-            //            println(hashes get(v2) forall { !_.nonEquals.contains(s1) }) 
-            hashes get (v2) forall { !_.nonEquals.contains(s1) } // v2's varset does not contain s1 as non-equals
-          case (v1: Variable, s2: PopSymbol) =>
-            hashes get (v1) forall { !_.nonEquals.contains(s2) } // v1's varset does not contain s2 as non-equals
-          case (s1: PopSymbol, s2: PopSymbol) => s1 == s2
-          }
-          */
         x =>
-          println("comparing pair: " + x)
-          (x._1 == x._2) || (x match {
-            case (s1: PopSymbol, s2: PopSymbol) => s1 == s2
-            case (t1, t2) =>
-              (hashes.get(t1), hashes.get(t2)) match {
-                case (Some(vs1: VarSet), Some(vs2: VarSet)) => vs1.isCompatibleWith(vs2)
-                case _ => true
-              }
-          })
+          print("comparing pair for consistency: " + x + ": ")
+          val b =
+            (x._1 == x._2) || (x match {
+              case (s1: PopSymbol, s2: PopSymbol) => s1 == s2
+              case (t1, t2) =>
+                (hashes.get(t1), hashes.get(t2)) match {
+                  case (Some(vs1: VarSet), Some(vs2: VarSet)) => vs1.isCompatibleWith(vs2)
+                  case _ => true
+                }
+            })
+          println(b)
+          b
       }
     }
 
@@ -213,23 +197,6 @@ class Binding private (val hashes: HashMap[Token, VarSet]) {
       var bind: Binding = this
       list.foreach {
         _ match {
-
-          /* this is *propably* not the correct behavior
-          case (v1: Variable, v2: Variable) =>
-            {
-              (hashes.get(v1), hashes.get(v2)) match {
-                case (Some(vs1: VarSet), Some(vs2: VarSet)) => bind += vs1.mergeWith(vs2)
-                case (Some(vs1: VarSet), None) => bind += vs1.bindTo(v2)
-                case (None, Some(vs2: VarSet)) => bind += vs2.bindTo(v1)
-                case (None, None) => bind += VarSet(v1, v2)
-              }
-            }
-          case (s1: PopSymbol, v2: Variable) =>
-            bind += (hashes get (v2) map { _ bindTo (s1) } getOrElse (VarSet(s1, v2)))
-          case (v1: Variable, s2: PopSymbol) =>
-            bind += (hashes get (v1) map { _ bindTo (s2) } getOrElse (VarSet(s2, v1)))
-          case (s1: PopSymbol, s2: PopSymbol) =>
-          */
 
           case (s1: PopSymbol, s2: PopSymbol) =>
           case (v1: Token, v2: Token) =>
@@ -253,15 +220,16 @@ class Binding private (val hashes: HashMap[Token, VarSet]) {
       }
       // check with initials
       val substProps = constraints map { bind substVars _ }
-      println("substed props:" + substProps.mkString("\n"))
-      if (substProps forall { p =>
+      println(constraints.mkString("\n"))
+      println(substProps.mkString("substed props:", "\n", "--end"))
+      if (substProps.forall { p: Proposition =>
         initial exists {
           x =>
-            if (x equalsIgnoreVars p) { println("substed: " + substVars(x) + "\n" + substVars(p)) }
+            if (x equalsIgnoreVars p) { println("equaled: substed: " + substVars(x) + "\n" + substVars(p)) }
 
             x equalsIgnoreVars p
         }
-      })
+      } || substProps == Nil)
         Some(bind)
       else None
     }

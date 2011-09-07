@@ -9,7 +9,7 @@ class ValuedNode [N]  (
 {
   override def compare(that:ValuedNode[N]):Int =
   {
-    if (this.value < that.value) -1
+    if (this.value > that.value) -1
     else if (this.value < that.value) 1
     else 0
   }
