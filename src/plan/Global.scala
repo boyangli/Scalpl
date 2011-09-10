@@ -35,7 +35,7 @@ object Global {
     Plan(0,
       List[Action](initStep, goalStep),
       List[Link](),
-      new Ordering(List((0, GOAL_ID))),
+      new Ordering(Set((0, GOAL_ID))),
       new Binding(),
       flaws,
       "initial plan",

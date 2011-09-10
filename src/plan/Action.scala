@@ -39,6 +39,9 @@ class Action(
         ")"
     }
   
+  def idText():String = if (isGoal) "goal" else id.toString
+  def isGoal():Boolean = id == Global.GOAL_ID
+  
   /** constraints without neqs
    * 
    */

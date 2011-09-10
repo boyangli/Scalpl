@@ -24,6 +24,12 @@ object Main {
       println("Found plan: " + result)
       println(result.planString())
       println(result.detailString())
+      
+      val t = result.links flatMap{
+        link => FlawRepair.detectThreats(link, result)
+      }
+      
+      println(t)
     } catch {
       case e: Exception =>
         println("Search Failed: " + e.getMessage)
@@ -32,14 +38,25 @@ object Main {
       println(bestfirst.stats)
     }
 
-    //    println(plan.detailString)
-    //    var plans = FlawRepair.refine(plan)
-    //    println("*********************************")
-    //    plans foreach { x => println("plan: \n" + x.detailString() + "\nbinding: " + x.binding + "\n\n") }
-    //
-    //    plans = FlawRepair.refine(plans(0))
-    //    println("*********************************")
-    //    plans foreach { x => println("plan: \n" + x.detailString() + "\nbinding: " + x.binding + "\n\n") }
+  }
+
+  def plan(): Option[Plan] = {
+    val actions = ActionParser.readFile("./planfiles/block1.act")
+    val problem = ProblemParser.readFile("./planfiles/block1.prob")
+
+    Global.init(actions, problem)
+    var plan = Global.initPlan()
+    //Global.debug = true
+    val parameter = new SearchParameter(500)
+    val bestfirst = new BestFirstSearch[Plan](List(plan), FlawRepair.refine _, complete _, eval _, parameter)
+
+    try {
+      Some(bestfirst.search())
+    } catch {
+      case e: Exception =>
+        println("Search Failed: " + e.getMessage)
+        None
+    }
   }
 
   def complete(p: Plan): Boolean = p.flaws == Nil

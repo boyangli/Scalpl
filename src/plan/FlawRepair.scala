@@ -1,7 +1,7 @@
 package plan
 import variable._
 import logging._
-object FlawRepair extends Logging{
+object FlawRepair extends Logging {
 
   def refine(p: Plan): List[Plan] =
     {
@@ -25,7 +25,7 @@ object FlawRepair extends Logging{
         // the threat is still valid
         //var answer = List[Plan]()
         // first option: separate the two conflicting conditions
-        
+
         val separated = p.binding.separate(threat.effect.negate, threat.threatened.condition) map {
           newbind =>
             debug("Separation succeeds")
@@ -103,8 +103,8 @@ object FlawRepair extends Logging{
                     debug("unification succeeds")
                     var newordering =
                       if (open.id == Global.GOAL_ID)
-                        List(((highStep, open.id)), ((0, highStep)))
-                      else List(((highStep, open.id)), ((0, highStep)), (highStep, Global.GOAL_ID))
+                        Set(((highStep, open.id)), ((0, highStep)))
+                      else Set(((highStep, open.id)), ((0, highStep)), (highStep, Global.GOAL_ID))
 
                     val newLink = new Link(highStep, open.id, open.condition)
                     val kid = p.copy(
@@ -113,7 +113,7 @@ object FlawRepair extends Logging{
                       links = newLink :: p.links,
                       binding = newbind,
                       flaws = newStep.preconditions.map { p => new OpenCond(highStep, p) } ::: (p.flaws - open),
-                      ordering = new Ordering(newordering ::: p.ordering.list),
+                      ordering = new Ordering(newordering ++ p.ordering.list),
                       reason = "Inserted action " + highStep + " to establish " + open.condition,
                       parent = p,
                       stepCount = highStep)
@@ -165,7 +165,6 @@ object FlawRepair extends Logging{
             new Threat(step.id, effect, l)
           }
         }
-
       threats
     }
 
@@ -201,29 +200,34 @@ object FlawRepair extends Logging{
       val init = p.steps.find(_.id == 0).get.effects // initial state
       val possibleActions = p.ordering.possiblyBefore(open.id) flatMap { p.id2step(_) }
       possibleActions foreach {
-        step =>
-          val stepId = step.id
-          step.effects foreach {
+        oldstep =>
+          val stepId = oldstep.id
+          oldstep.effects foreach {
             effect =>
-              if (p.binding.substVars(effect).equalsIgnoreVars(open.condition)) // filtering obviously impossible effects
+              if (p.binding.canUnify(effect, open.condition)) // filtering obviously impossible effects
               {
                 debug("trying to reuse effect: " + stepId + ": " + effect + " for " + open.condition)
-                p.binding.unify(effect, open.condition, step.constraints, init) match {
+                val constraints = (oldstep.constraints ::: p.id2step(open.id).map(_.constraints).getOrElse(Nil)) filterNot {_.verb == 'neq}
+                p.binding.directUnify(effect, open.condition, constraints, init) match {
                   case Some(newbind: Binding) =>
                     debug("reuse succeeds")
-                    var newordering = List(((stepId, open.id)))
-
-                    val kid = p.copy(
+                    var newordering = Set(((stepId, open.id)))
+                    val newLink = new Link(stepId, open.id, open.condition)
+                    var kid = p.copy(
                       id = Global.obtainID(),
-                      links = new Link(stepId, open.id, open.condition) :: p.links,
+                      links = newLink :: p.links,
                       binding = newbind,
                       flaws = p.flaws - open,
-                      ordering = new Ordering(newordering ::: p.ordering.list),
+                      ordering = new Ordering(newordering ++ p.ordering.list),
                       reason = "Reused action " + stepId + " to establish " + open.condition,
                       parent = p)
 
+                    val threats = detectThreats(newLink, kid)
+                    if (threats != Nil) // add detected threats into the plan
+                      kid = kid.copy(flaws = threats ::: kid.flaws)
+                      
                     kids = kid :: kids
-                  case None => debug ("reuse failed")
+                  case None => debug("reuse failed")
                 }
               }
           }
