@@ -35,8 +35,9 @@ class BestFirstSearch[N] (
         debug
         {
           val plan = best.asInstanceOf[Plan]
-          "refining :" + plan + "\n"  + plan.detailString()
+         "refining :" + plan + "\n"  + plan.detailString()
         }
+        
         val children = refine(best)
         addToQueue(children)
         if (stats.nodeVisited > parameter.limit)

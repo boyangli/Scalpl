@@ -8,14 +8,24 @@ object FlawRepair extends Logging {
       val kids =
         selectFlaw(p) match {
           case open: OpenCond =>
-            debug("repairing: " + open)
+            trace("repairing: " + open)
             repairOpen(p, open)
           case threat: Threat =>
-            debug("repairing: " + threat)
+            trace("repairing: " + threat)
             repairThreat(p, threat)
           case _ => throw new Exception("A flaw with no known repairs! " + p.flaws)
         }
       p.children = kids
+      
+      trace {
+        "new plans: " + 
+        kids.map{
+          plan => 
+            plan.toString + "\n" +
+            plan.planString()
+        } mkString
+      }
+      
       kids
     }
 
@@ -28,7 +38,7 @@ object FlawRepair extends Logging {
 
         val separated = p.binding.separate(threat.effect.negate, threat.threatened.condition) map {
           newbind =>
-            debug("Separation succeeds")
+            debug("Separated " + threat.effect.negate + " and " + threat.threatened.condition)
             p.copy(
               id = Global.obtainID(),
               binding = newbind,

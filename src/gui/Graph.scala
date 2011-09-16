@@ -14,22 +14,12 @@ import scala.collection.mutable.HashMap
 
 class Graph {
 
-  protected val graph = new mxGraph()
-  graph.setCellsEditable(false)
-  graph.setCellsResizable(false)
-  graph.setCellsDisconnectable(false)
-  graph.setEdgeLabelsMovable(false)
-  graph.setCellsDeletable(false)
-  graph.setCellsMovable(true)
-
+  protected var graph = new mxGraph()
+  initGraph()
   protected val graphComp = new mxGraphComponent(graph)
-  graphComp.setConnectable(false);
-  graphComp.getViewport().setOpaque(true);
-  graphComp.getViewport().setBackground(java.awt.Color.white);
+  initComponent()
   //graphComp.set
-  protected val layout = new mxCircleLayout(graph, 5)
-
-  defineStyles()
+  protected var layout = new mxCircleLayout(graph, 5)
 
   val component = Component.wrap(graphComp)
   graph.setAutoOrigin(true)
@@ -82,6 +72,23 @@ class Graph {
     //layout.execute(graph.getDefaultParent())
   }
 
+  protected def initGraph() {
+    graph.setCellsEditable(false)
+    graph.setCellsResizable(false)
+    graph.setCellsDisconnectable(false)
+    graph.setEdgeLabelsMovable(false)
+    graph.setCellsDeletable(false)
+    graph.setCellsMovable(true)
+  }
+
+  protected def initComponent() {
+    graphComp.setConnectable(false);
+    graphComp.getViewport().setOpaque(true);
+    graphComp.getViewport().setBackground(java.awt.Color.white);
+    defineStyles()
+    layout = new mxCircleLayout(graph, 5)
+  }
+
   def insertCell(text: String, x: Int, y: Int) {
     val parent = graph.getDefaultParent()
     val (xplus, yplus) = getsize(text)
@@ -114,6 +121,13 @@ class Graph {
     edge.setEdge(true);
     edge.getGeometry().setRelative(true)
     edge
+  }
+
+  def clear() {
+    graph = new mxGraph
+    initGraph()
+    graphComp.setGraph(graph)
+    initComponent()
   }
 
   def getsize(text: String): (Int, Int) =
@@ -231,7 +245,7 @@ class Graph {
       var edges = hash.keySet map { key =>
         val name = key._1 + "->" + {
           if (key._2 == Global.GOAL_ID) "goal" else key._2
-        } + " " + hash.get(key)
+        } + " " + hash.get(key).get
         val edge = makeEdge(name.replace("'", ""))
         val source = cellArr(key._1)
         val target = if (key._2 == Global.GOAL_ID) cellArr(count - 1) else cellArr(key._2)

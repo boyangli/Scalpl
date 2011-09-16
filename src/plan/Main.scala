@@ -9,10 +9,18 @@ object Main {
     //    val actions = ActionParser.readFile("./planfiles/actions.txt")
     //    val problem = ProblemParser.readFile("./planfiles/problem.txt")
 
-    val actions = ActionParser.readFile("./planfiles/block1.act")
-    val problem = ProblemParser.readFile("./planfiles/block1.prob")
+    val actions = try { 
+      ActionParser.readFile("./planfiles/test2.act")
+    } catch
+    {
+      case e:RuntimeException => 
+        println("cannot parse action file: " + e.getMessage())
+        return
+    }
+    val problem = ProblemParser.readFile("./planfiles/test2.prob")
 
     Global.init(actions, problem)
+    //Global.setDebug()
     var plan = Global.initPlan()
     //Global.debug = true
     val parameter = new SearchParameter(500)
@@ -40,9 +48,9 @@ object Main {
 
   }
 
-  def plan(): Option[Plan] = {
-    val actions = ActionParser.readFile("./planfiles/block1.act")
-    val problem = ProblemParser.readFile("./planfiles/block1.prob")
+  def plan(actionFile:String, problemFile:String): (Option[Plan], SearchStats) = {
+    val actions = ActionParser.readFile(actionFile)
+    val problem = ProblemParser.readFile(problemFile)
 
     Global.init(actions, problem)
     var plan = Global.initPlan()
@@ -50,6 +58,7 @@ object Main {
     val parameter = new SearchParameter(500)
     val bestfirst = new BestFirstSearch[Plan](List(plan), FlawRepair.refine _, complete _, eval _, parameter)
 
+    val first =
     try {
       Some(bestfirst.search())
     } catch {
@@ -57,6 +66,8 @@ object Main {
         println("Search Failed: " + e.getMessage)
         None
     }
+    
+    (first, bestfirst.stats)
   }
 
   def complete(p: Plan): Boolean = p.flaws == Nil

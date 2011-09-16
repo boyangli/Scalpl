@@ -19,6 +19,22 @@ object BasicSwing extends SimpleSwingApplication {
     size = bottomDim
   }
 
+  val probField = new TextField("Input Problem Name Here")
+  
+  val probBar = new FlowPanel {
+    val browseBtn = new Button("Browse")
+    probField.size_=(new Dimension(500, 100))
+    probField.preferredSize_=(new Dimension(500, 27))
+    contents += (probField, browseBtn)
+    listenTo(probField, browseBtn)
+    probField.selectAll()
+    reactions +=
+      {
+        case FocusGained(text: TextField, _, _) =>
+          probField.selectAll()
+      }
+  }
+
   val planBtn = new Button("Plan")
   val btn2 = new Button("button2")
   // button bar
@@ -45,21 +61,29 @@ object BasicSwing extends SimpleSwingApplication {
       layout(graph.component) = BorderPanel.Position.Center
 
       layout(new BoxPanel(Orientation.Vertical) {
-        contents += status
-        contents += buttonbar
+        contents += (probBar, buttonbar, status)
+        //        contents += buttonbar
+        //        contents += status
       }) = BorderPanel.Position.South
     }
 
     size = new Dimension(600, 700)
-
   }
 
   def planAndShow() {
-    val p = plan.Main.plan()
-
-    println(p)
-    if (p.isDefined)
+    graph.clear()
+    val probName = probField.text
+    val dir = "./planfiles/"
+    val probFile = dir + probName + ".prob"
+    val actionFile = dir + probName + ".act"
+    val (p, stats) = plan.Main.plan(actionFile, probFile)
+    var statusText = stats.toString()
+    if (p.isDefined) {
       graph.showPlan(p.get)
+      statusText += ". Plan Found: " + p.get.toString
+    } else statusText += ". No Plans Found."
+
+    status.text_=(statusText)
   }
 
 }

@@ -1,0 +1,23 @@
+(action kill (?p1 ?p2 ?loc)
+	(constraints (person ?p1) (person ?p2) (location ?loc) (neq ?p1 ?p2))
+	(preconditions (not (dead ?p1)) (not (dead ?p2)) (at ?p1 ?loc) (at ?p2 ?loc))
+	(effects (dead ?p2))
+	)
+
+(action move (?p1 ?loc1 ?loc2)
+     (constraints (person ?p1) (location ?loc1) (location ?loc2) (neq ?loc1 ?loc2))
+	 (preconditions (at ?p1 ?loc1) (not (dead ?p1)))
+	 (effects (not (at ?p1 ?loc1)) (at ?p1 ?loc2))
+	 )
+	 
+(action dead-drop (?p1 ?o ?loc)
+	(constraints (person ?p1) (object ?o) (location ?loc))
+	(preconditions (at ?p1 ?loc) (owns ?p1 ?o) (dead ?p1))
+	(effects (not (owns ?p1 ?o)) (for-pickup ?o) (at ?o ?loc))
+	)
+	
+(action pick-up (?p1 ?o ?loc)
+	(constraints (person ?p1) (object ?o) (location ?loc))
+	(preconditions (at ?p1 ?loc) (for-pickup ?o) (at ?p1 ?loc))
+	(effects (not (for-pickup ?o)) (owns ?p1 ?o))
+	)

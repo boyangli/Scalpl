@@ -4,14 +4,16 @@
 	(effects (dead ?p2))
 )
 
-(action give (?p1 ?p2 ?o)
-	(constraints (person ?p1) (person ?p2) (object ?o) (neq ?p1 ?p2))
-	(preconditions (has ?p1 ?o) (not (dead ?p1)) (not (dead ?p2)))
-	(effects (not (has ?p1 ?o)) (has ?p2 ?o))
-)
-
 (action move (?p1 ?loc1 ?loc2)
      (constraints (person ?p1) (location ?loc1) (location ?loc2))
 	 (preconditions (at ?p1 ?loc1) (not (dead ?p1)))
 	 (effects (not (at ?p1 ?loc1)) (at ?p1 ?loc2))
 	 )
+	 
+(action dead-drop (?p1 ?o ?loc)
+	(constraints (person ?p1) (object ?o) (location ?o))
+	(preconditions (at ?p1 location) (owns ?p1 ?o) (dead ?p1))
+	(effects (not (?p1 owns ?o)) (for-pickup ?o))
+	)
+	
+(action pick-up 

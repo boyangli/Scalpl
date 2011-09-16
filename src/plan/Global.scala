@@ -13,7 +13,8 @@ object Global {
   var initialPlan: Plan = null
   var planVisited = 0
   protected var planGenerated = 0
-  var debug = false
+  protected var debugLvl = 'normal
+  val debugFile = "log.txt"
 
   def obtainID() =
     {
@@ -42,4 +43,21 @@ object Global {
       null,
       null)
   }
+  
+  def setNormal()
+  {
+    debugLvl = 'normal
+  }
+  
+  def setTrace()
+  {
+    debugLvl = 'trace
+  }
+  
+  def setDebug()
+  {
+    debugLvl = 'debug
+  }
+  
+  def debug() = debugLvl
 }

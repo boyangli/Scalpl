@@ -10,12 +10,12 @@ import plan._
 object TestMain {
 
   def main(args: Array[String]) {
-    val actions = ActionParser.readFile("./planfiles/block1.act")
-    val problem = ProblemParser.readFile("./planfiles/block1.prob")
+    val actions = ActionParser.readFile("./planfiles/test2.act")
+    val problem = ProblemParser.readFile("./planfiles/test2.prob")
 
     Global.init(actions, problem)
     var plan = Global.initPlan()
-    Global.debug = true
+    Global.setDebug
     var plans = List(plan)
     plans = FlawRepair.refine(plan)
     plan = plans(0)

@@ -1,0 +1,13 @@
+(problem
+(init 
+	(person tom)(person jack)
+	(owns jack money)
+	(object money)
+	(location home) (location school) (at tom school) (at jack home)
+)
+(goal
+	(owns tom money)
+	(dead jack)
+	(at tom home)
+)
+)
