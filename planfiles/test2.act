@@ -21,3 +21,9 @@
 	(preconditions (at ?p1 ?loc) (for-pickup ?o) (at ?p1 ?loc))
 	(effects (not (for-pickup ?o)) (owns ?p1 ?o))
 	)
+	
+(action give (?p1 ?p2 ?o ?loc)
+	(constraints (person ?p1) (person ?p2) (object ?o) (location ?loc) (neq ?p2 ?p1))
+	(preconditions (at ?p1 ?loc) (at ?p2 ?loc) (owns ?p1 ?o) (not (dead ?p1)) (not (dead ?p2)) (likes ?p1 ?p2))
+	(effects (not (owns ?p1 ?o)) (owns ?p2 ?o))
+	)

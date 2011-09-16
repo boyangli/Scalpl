@@ -9,16 +9,20 @@ object Main {
     //    val actions = ActionParser.readFile("./planfiles/actions.txt")
     //    val problem = ProblemParser.readFile("./planfiles/problem.txt")
 
-    val actions = try { 
+    val actions = try {
       ActionParser.readFile("./planfiles/test2.act")
-    } catch
-    {
-      case e:RuntimeException => 
+    } catch {
+      case e: RuntimeException =>
         println("cannot parse action file: " + e.getMessage())
         return
     }
-    val problem = ProblemParser.readFile("./planfiles/test2.prob")
-
+    val problem = try {
+      ProblemParser.readFile("./planfiles/test2.prob")
+    } catch {
+      case e: RuntimeException =>
+        println("cannot parse problem file: " + e.getMessage())
+        return
+    }
     Global.init(actions, problem)
     //Global.setDebug()
     var plan = Global.initPlan()
@@ -32,11 +36,12 @@ object Main {
       println("Found plan: " + result)
       println(result.planString())
       println(result.detailString())
-      
-      val t = result.links flatMap{
-        link => FlawRepair.detectThreats(link, result)
+
+      val t = result.links flatMap {
+        link =>
+          FlawRepair.detectThreats(link, result)
       }
-      
+
       println(t)
     } catch {
       case e: Exception =>
@@ -48,7 +53,7 @@ object Main {
 
   }
 
-  def plan(actionFile:String, problemFile:String): (Option[Plan], SearchStats) = {
+  def plan(actionFile: String, problemFile: String): (Option[Plan], SearchStats) = {
     val actions = ActionParser.readFile(actionFile)
     val problem = ProblemParser.readFile(problemFile)
 
@@ -59,14 +64,14 @@ object Main {
     val bestfirst = new BestFirstSearch[Plan](List(plan), FlawRepair.refine _, complete _, eval _, parameter)
 
     val first =
-    try {
-      Some(bestfirst.search())
-    } catch {
-      case e: Exception =>
-        println("Search Failed: " + e.getMessage)
-        None
-    }
-    
+      try {
+        Some(bestfirst.search())
+      } catch {
+        case e: Exception =>
+          println("Search Failed: " + e.getMessage)
+          None
+      }
+
     (first, bestfirst.stats)
   }
 
