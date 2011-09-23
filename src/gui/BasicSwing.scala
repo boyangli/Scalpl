@@ -50,7 +50,6 @@ object BasicSwing extends SimpleSwingApplication {
             planAndShow()
           }
       }
-
   }
 
   graph.setSize(centerDim)

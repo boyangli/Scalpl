@@ -6,7 +6,6 @@ import org.junit.Assert._
 import org.junit.Test
 import org.junit.Before
 import variable._
-import variable.PopSymbol._
 import plan._
 import parsing._
 

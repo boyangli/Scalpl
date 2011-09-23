@@ -1,18 +1,19 @@
 (problem
 (init 
-	(block red)
-	(block blue)
-	(block yellow)
-	(on-top red blue)
-	(on-top blue table)
-	(on-top yellow table)
+	(on-top red:Block blue)
+	(on-top blue:Block table)
+	(on-top yellow table:Table)
 	(clear table)
 	(clear yellow)
 	(clear red)
+	
 )
 (goal
 	(on-top blue table)
 	(on-top yellow blue)
 	(on-top red yellow)
 )
+(classes
+	(subclass Block Platform)
+	(subclass Table Platform)
 )

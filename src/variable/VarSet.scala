@@ -2,20 +2,20 @@ package variable
 
 import scala.collection.mutable.HashMap
 import scala.collection.mutable.ListBuffer
-import PopSymbol._
+
 import plan._
 
-class VarSet(val equals: List[Token], val nonEquals: List[Token], val symbol: PopSymbol) {
+class VarSet(val equals: List[Token], val nonEquals: List[Token], val groundObj: PopObject) {
 
   private var defined = false
 
   def bindTo(token: Token): VarSet = token match {
-    case sym: PopSymbol =>
+    case sym: PopObject =>
       {
         if (defined) {
           // varset already bound to a symbol
-          if (symbol == sym) return this // already bound to this symbol, do nothing
-          else throw new BindingException("varset already bound to a symbol: " + symbol + " different from " + sym)
+          if (groundObj == sym) return this // already bound to this symbol, do nothing
+          else throw new BindingException("varset already bound to a symbol: " + groundObj + " different from " + sym)
           // cannot bound to a different symbol, throw an exception
         } else if (nonEquals.contains(sym)) throw new BindingException("varset already bound to the negation of the symbol: " + sym)
         else
@@ -29,22 +29,22 @@ class VarSet(val equals: List[Token], val nonEquals: List[Token], val symbol: Po
         else if (equals.contains(v))
           this // already bound to the current variable, do nothing
         else
-          new VarSet(v :: equals, nonEquals, symbol)
+          new VarSet(v :: equals, nonEquals, groundObj)
       }
 
   }
 
   def bindNotTo(token: Token): VarSet = token match {
-    case sym: PopSymbol =>
+    case sym: PopObject =>
       {
-        if (sym == symbol) throw new BindingException("already bound to the symbol. Cannot bind to its negation")
-        else new VarSet(equals, sym :: nonEquals, symbol)
+        if (sym == groundObj) throw new BindingException("already bound to the symbol. Cannot bind to its negation")
+        else new VarSet(equals, sym :: nonEquals, groundObj)
       }
 
     case v: Variable =>
       {
         if (equals.contains(v)) throw new BindingException("already bound to the variable. Cannot bind to its negation")
-        else new VarSet(equals, v :: nonEquals, symbol)
+        else new VarSet(equals, v :: nonEquals, groundObj)
       }
   }
 
@@ -53,9 +53,9 @@ class VarSet(val equals: List[Token], val nonEquals: List[Token], val symbol: Po
     tokens foreach {
       _ match {
 
-        case sym: PopSymbol =>
+        case sym: PopObject =>
           {
-            if (sym == symbol) throw new BindingException("already bound to the symbol. Cannot bind to its negation")
+            if (sym == groundObj) throw new BindingException("already bound to the symbol. Cannot bind to its negation")
             else newNonEquals ::= sym
           }
 
@@ -66,7 +66,7 @@ class VarSet(val equals: List[Token], val nonEquals: List[Token], val symbol: Po
           }
       }
     }
-    new VarSet(equals, newNonEquals, symbol)
+    new VarSet(equals, newNonEquals, groundObj)
   }
 
   override def equals(a: Any): Boolean = a match {
@@ -84,14 +84,14 @@ class VarSet(val equals: List[Token], val nonEquals: List[Token], val symbol: Po
     case _ => false
   }
 
-  def isGrounded() = (symbol != null)
+  def isGrounded() = (groundObj != null)
 
   def contains(v: Variable): Boolean = equals.contains(v)
 
-  def contains(s: Symbol): Boolean = symbol == s
+  def contains(s: PopObject): Boolean = groundObj == s
 
   override def toString() = equals.mkString("<varset: (", ", ", ")" +
-    (if (isGrounded()) "=" + symbol else "") +
+    (if (isGrounded()) "=" + groundObj else "") +
     "; ") + 
     (if (nonEquals != Nil) nonEquals.mkString("non-equal: (", ", ", ")")) + ">"
 
@@ -104,7 +104,7 @@ class VarSet(val equals: List[Token], val nonEquals: List[Token], val symbol: Po
     {
       that.equals.forall(!this.nonEquals.contains(_)) && // none of the nonequals is contained in the equals 
         this.equals.forall(!that.nonEquals.contains(_)) &&
-        (!(this.isGrounded() && that.isGrounded() && this.symbol != that.symbol)) // each is bounded to a different symbol: failure
+        (!(this.isGrounded() && that.isGrounded() && this.groundObj != that.groundObj)) // each is bounded to a different symbol: failure
     }
 
   /**
@@ -113,20 +113,20 @@ class VarSet(val equals: List[Token], val nonEquals: List[Token], val symbol: Po
    */
   def mergeWith(that: VarSet): VarSet =
     {
-      new VarSet(this.equals ::: that.equals, this.nonEquals ::: that.nonEquals, if (this.isGrounded()) this.symbol else that.symbol)
+      new VarSet(this.equals ::: that.equals, this.nonEquals ::: that.nonEquals, if (this.isGrounded()) this.groundObj else that.groundObj)
     }
   
-  def equalsAndSymbol() = if (isGrounded()) symbol::equals else equals
+  def equalsAndSymbol() = if (isGrounded()) groundObj::equals else equals
 }
 
 object VarSet {
 
-  def apply(s: Symbol, vars: Variable*): VarSet =
-    {
-      new VarSet(vars.toList, List[Variable](), s)
-    }
+//  def apply(s: Symbol, vars: Variable*): VarSet =
+//    {
+//      new VarSet(vars.toList, List[Variable](), s)
+//    }
 
-  def apply(s: PopSymbol, vars: Variable*): VarSet =
+  def apply(s: PopObject, vars: Variable*): VarSet =
     {
       new VarSet(vars.toList, List[Variable](), s)
     }
@@ -140,15 +140,15 @@ object VarSet {
   def apply(tokens: Token*): VarSet =
     {
       val tlist = tokens.toList
-      var symbols: List[PopSymbol] = List[PopSymbol]()
+      var symbols: List[PopObject] = List[PopObject]()
       var vars: List[Variable] = List[Variable]()
 
-      //      val (vars: List[Variable], symbols: List[PopSymbol]) = tlist.span(_.isInstanceOf[Variable])
+      //      val (vars: List[Variable], symbols: List[PopObject]) = tlist.span(_.isInstanceOf[Variable])
 
       tlist.foreach {
         _ match {
           case v: Variable => vars ::= v
-          case s: PopSymbol => symbols ::= s
+          case s: PopObject => symbols ::= s
         }
       }
 
@@ -159,7 +159,7 @@ object VarSet {
           }
         case 1 =>
           {
-            new VarSet(vars, List[Token](), symbols(0).asInstanceOf[PopSymbol])
+            new VarSet(vars, List[Token](), symbols(0).asInstanceOf[PopObject])
           }
         case _ =>
           {
@@ -210,8 +210,8 @@ object VarSet_Test {
 	  val p1 = Proposition.parse("(kick jack tom ?p2 ?p3)")
 	  val p2 = Proposition.parse("(kick jack ?p4 jill ?p6)")
 	  var bind = new Binding()
-	  bind += VarSet(Variable("?p4"), 'tom)
-	  bind += VarSet(Variable("?p2"), 'adam)
+	  //bind += VarSet(Variable("?p4"), 'tom)
+	  //bind += VarSet(Variable("?p2"), 'adam)
 	  val list = bind.separate(p1, p2)
 //	  val b = list(0)
 //	  println(b.hashes.keySet)

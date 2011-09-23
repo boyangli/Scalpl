@@ -1,10 +1,10 @@
-(action give (?p1 ?p2 ?o)
+(action give (?p1:Person ?p2:Person ?o:Object)
 	(constraints (person ?p1) (person ?p2) (object ?o))
 	(preconditions (has ?p1 ?o))
 	(effects (not (has ?p1 ?o)) (has ?p2 ?o))
 )
 
-(action kick (?p1 ?p2) 
+(action kick (?p1:Person ?p2:Object) 
       (constraints (person ?p1) (person ?p2))
       (preconditions (dislike ?p1 ?p2))
       (effects (hurt ?p2))

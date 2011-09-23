@@ -1,11 +1,19 @@
 (problem
 (init 
-	(person tom)(person jack)
-	(dislike tom jack)
-	(hurt jill)
+	(dislike tom jack : Person)
+	(hurt jill : Person)
+	(owns jill money:Object)
+	(at jill park:Location)
+	(dummy-prop)
 )
 (goal
 	(hurt jack)
-	(not (hurt tom))
+	(not (hurt tom:Person))
+	(knows tom (at jill park))
+	(pretends tom (not (knows tom (at jill park))))
+	)
+(classes
+	(subclass Block Platform)
+	(subclass Table Platform)
 )
 )

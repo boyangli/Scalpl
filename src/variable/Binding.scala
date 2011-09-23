@@ -3,7 +3,6 @@ package variable
 import scala.collection.mutable.HashMap
 import logging._
 import scala.collection.mutable.ListBuffer
-import PopSymbol._
 import plan._
 
 class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
@@ -16,7 +15,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
     val bind = new Binding(hashes.clone())
     vs.equals.foreach(v => bind.hashes += (v -> vs))
     if (vs.isGrounded())
-      bind.hashes += (vs.symbol -> vs)
+      bind.hashes += (vs.groundObj -> vs)
     bind
   }
 
@@ -26,7 +25,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
     vss foreach { vs =>
       vs.equals.foreach(v => bind.hashes += (v -> vs))
       if (vs.isGrounded())
-        bind.hashes += (vs.symbol -> vs)
+        bind.hashes += (vs.groundObj -> vs)
     }
     bind
   }
@@ -180,7 +179,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
         x =>
           val b =
             (x._1 == x._2) || (x match {
-              case (s1: PopSymbol, s2: PopSymbol) => s1 == s2
+              case (s1: PopObject, s2: PopObject) => s1 == s2
               case (t1, t2) =>
                 (hashes.get(t1), hashes.get(t2)) match {
                   case (Some(vs1: VarSet), Some(vs2: VarSet)) => vs1.isCompatibleWith(vs2)
@@ -199,7 +198,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
       list.foreach {
         _ match {
 
-          case (s1: PopSymbol, s2: PopSymbol) =>
+          case (s1: PopObject, s2: PopObject) =>
           case (v1: Token, v2: Token) =>
             {
               (hashes.get(v1), hashes.get(v2)) match {
@@ -247,7 +246,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
       var bind: Binding = this
       list.foreach {
         _ match {
-          case (s1: PopSymbol, s2: PopSymbol) => // ignore this pair. Whether they are the same or not, we cannot do anything 
+          case (s1: PopObject, s2: PopObject) => // ignore this pair. Whether they are the same or not, we cannot do anything 
           case (v1: Token, v2: Token) =>
             {
               (hashes.get(v1), hashes.get(v2)) match {
@@ -280,8 +279,8 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
                   answer += bind
               }
             }
-          //          case (v1:Variable, s2:PopSymbol) =>
-          //          case (s1:PopSymbol, v2:Variable) =>
+          //          case (v1:Variable, s2:PopObject) =>
+          //          case (s1:PopObject, v2:Variable) =>
         }
       }
       answer.toList
@@ -289,8 +288,8 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
 
   override def clone() = new Binding(hashes.clone())
 
-  def getBoundedSymbol(v: Variable): Option[PopSymbol] =
-    hashes.get(v) filter { _.isGrounded() } map { _.symbol }
+  def getBoundedSymbol(v: Variable): Option[PopObject] =
+    hashes.get(v) filter { _.isGrounded() } map { _.groundObj }
 
   def substVars(p: Proposition): Proposition =
     {
@@ -298,7 +297,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
         case v: Variable =>
           getBoundedSymbol(v) getOrElse (v)
 
-        case t: PopSymbol => t
+        case t: PopObject => t
         case p1: Proposition => substVars(p1)
         case other => other
       }))
@@ -309,13 +308,13 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
       "(" + a.name + a.parameters.map { x => getBoundedSymbol(x).getOrElse(x) }.mkString(" ", " ", ")")
     }
 
-  def substVars(p: Proposition, va: Variable, sa: PopSymbol): Proposition =
+  def substVars(p: Proposition, va: Variable, sa: PopObject): Proposition =
     {
       Proposition(p.verb, p.termlist.map(_ match {
         case v: Variable =>
           getBoundedSymbol(v) getOrElse { if (v == va) sa else v }
 
-        case t: PopSymbol => t
+        case t: PopObject => t
         case p1: Proposition => substVars(p1)
         case other => other
       }))

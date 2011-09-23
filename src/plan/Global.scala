@@ -1,7 +1,11 @@
 package plan
 import variable._
 
-class Problem(val init: List[Proposition], val goal: List[Proposition])
+class Problem(
+    val init: List[Proposition], 
+    val goal: List[Proposition], 
+    val subclasses:Map[String, Set[String]] = scala.collection.immutable.HashMap[String, Set[String]]()
+    ) 
 
 object Global {
 
@@ -12,6 +16,7 @@ object Global {
   var goalState = List[Proposition]()
   var initialPlan: Plan = null
   var planVisited = 0
+  var classes: Map[String, Set[String]] = null
   protected var planGenerated = 0
   protected var debugLvl = 'normal
   val debugFile = "log.txt"
@@ -26,6 +31,7 @@ object Global {
     actionTemplates = actions
     initState = problem.init
     goalState = problem.goal
+    classes = problem.subclasses
   }
 
   def initPlan(): Plan = {

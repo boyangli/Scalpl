@@ -1,6 +1,6 @@
 package plan
 import variable._
-import variable.TermList._
+
 class Action(
     val id: Int,
     val name: String,
@@ -59,7 +59,7 @@ object Action {
       val verb = prop.verb
       val termlist: List[TopTerm] = prop.termlist.map(_ match {
         case v: Variable => v.instantiate(number)
-        case s: PopSymbol => s
+        case s: PopObject => s
         case p: Proposition => instanProp(p, number)
         case _ => throw new Exception("weird content in term list")
       })

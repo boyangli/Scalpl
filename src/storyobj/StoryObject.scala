@@ -1,0 +1,5 @@
+package storyobj
+
+class StoryObject {
+
+}
