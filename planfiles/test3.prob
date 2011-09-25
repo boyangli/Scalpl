@@ -1,0 +1,12 @@
+(problem
+(init 
+	(owns jack:Person money:Object)
+	(owns employee:Person flower:Object) (likes tom jill:Person) (likes jill:Person flower) 
+	(at tom:Person school:Location) (at jack home:Location) (at employee shop:Location) (at jill school)
+)
+(goal
+	(dead jack)
+	(owns tom flower)
+	(not (dead employee))
+)
+)

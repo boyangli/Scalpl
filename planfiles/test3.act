@@ -1,0 +1,36 @@
+(action kill (?p1:Person ?p2:Person ?loc:Location)
+	(constraints (neq ?p1 ?p2))
+	(preconditions (not (dead ?p1)) (not (dead ?p2)) (at ?p1 ?loc) (at ?p2 ?loc))
+	(effects (dead ?p2))
+	)
+
+(action move (?p1:Person ?loc1:Location ?loc2:Location)
+     (constraints (neq ?loc1 ?loc2))
+	 (preconditions (at ?p1 ?loc1) (not (dead ?p1)))
+	 (effects (not (at ?p1 ?loc1)) (at ?p1 ?loc2))
+	 )
+	 
+(action dead-drop (?p1:Person ?o:Object ?loc:Location)
+	(constraints )
+	(preconditions (at ?p1 ?loc) (owns ?p1 ?o) (dead ?p1))
+	(effects (not (owns ?p1 ?o)) (for-pickup ?o) (at ?o ?loc))
+	)
+	
+(action pick-up (?p1:Person ?o:Object ?loc:Location)
+	(constraints )
+	(preconditions (at ?p1 ?loc) (for-pickup ?o) (at ?p1 ?loc))
+	(effects (not (for-pickup ?o)) (owns ?p1 ?o))
+	)
+	
+(action give (?p1:Person ?p2:Person ?o:Object ?loc:Location)
+	(constraints (neq ?p2 ?p1))
+	(preconditions (at ?p1 ?loc) (at ?p2 ?loc) (owns ?p1 ?o) (not (dead ?p1)) (not (dead ?p2)) (likes ?p1 ?p2))
+	(effects (not (owns ?p1 ?o)) (owns ?p2 ?o))
+	)
+	
+(action buy (?p1:Person ?p2:Person ?o:Object ?loc:Location)
+	(constraints (neq ?p2 ?p1))
+	(preconditions (at ?p1 ?loc) (at ?p2 ?loc) (owns ?p1 money) (owns ?p2 ?o) (not (dead ?p1)) (not (dead ?p2)))
+	(effects (owns ?p2 money) (not (owns ?p1 money)) (owns ?p1 ?o) (not (owns ?p2 ?o)))
+	)
+	

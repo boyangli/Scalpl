@@ -9,7 +9,7 @@ object Main {
     //    val problem = ProblemParser.readFile("./planfiles/problem.txt")
 
     val (problem, actions) = try {
-      TotalParser.parse("./planfiles/test2.prob", "./planfiles/test2.act")
+      TotalParser.parse("./planfiles/test3.prob", "./planfiles/test3.act")
     } catch {
       case e: RuntimeException =>
         println("cannot parse file: " + e.getMessage())
@@ -21,7 +21,7 @@ object Main {
     //Global.setDebug()
     var plan = Global.initPlan()
     //Global.setTrace()
-    val parameter = new SearchParameter(500)
+    val parameter = new SearchParameter(50000)
     val bestfirst = new BestFirstSearch[Plan](List(plan), FlawRepair.refine _, complete _, eval _, parameter)
 
     try {

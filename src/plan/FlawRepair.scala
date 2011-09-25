@@ -266,13 +266,22 @@ object FlawRepair extends Logging {
       }
 
       bindings map { bind =>
-        p.copy(
-          id = Global.newPlanID(),
-          links = new Link(0, open.id, open.condition) :: p.links,
-          binding = bind,
-          flaws = p.flaws - open,
-          reason = "Closed World Assumption: " + open.condition,
-          parent = p)
+        val newLink = new Link(0, open.id, open.condition)
+        
+        var kid =
+          p.copy(
+            id = Global.newPlanID(),
+            links = newLink :: p.links,
+            binding = bind,
+            flaws = p.flaws - open,
+            reason = "Closed World Assumption: " + open.condition,
+            parent = p)
+
+        val threats = detectThreats(newLink, kid)
+        if (threats != Nil) // add detected threats into the plan
+          kid = kid.copy(flaws = threats ::: kid.flaws)
+
+        kid
       }
     }
 

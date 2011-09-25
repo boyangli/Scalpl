@@ -1,0 +1,50 @@
+Test 3:
+
+*************************
+Found plan: <Plan[19188] #steps=6, #flaws=0>
+[2] (move jack:Person home:Location school:Location)
+[1] (kill jill:Person jack:Person school:Location)
+[6] (dead-drop jack:Person money:Object school:Location)
+[5] (pick-up tom:Person money:Object school:Location)
+[4] (move employee:Person shop:Location school:Location)
+[3] (buy tom:Person employee:Person flower:Object school:Location)
+
+[2] (move jack:Person home:Location school:Location)
+[1] (kill jill:Person jack:Person school:Location)
+[6] (dead-drop jack:Person money:Object school:Location)
+[5] (pick-up tom:Person money:Object school:Location)
+[4] (move employee:Person shop:Location school:Location)
+[3] (buy tom:Person employee:Person flower:Object school:Location)
+
+flaws: 
+
+links: 
+(0 -> goal: 'not('dead(employee:Person)))
+(0 -> 3: 'not('dead(v-?p2-3:Person)))
+(0 -> 3: 'not('dead(v-?p1-3:Person)))
+(0 -> 3: 'owns(v-?p2-3:Person v-?o-3:Object))
+(0 -> 5: 'at(v-?p1-5:Person v-?loc-5:Location))
+(1 -> 6: 'dead(v-?p1-6:Person))
+(0 -> 6: 'owns(v-?p1-6:Person v-?o-6:Object))
+(2 -> 6: 'at(v-?p1-6:Person v-?loc-6:Location))
+(6 -> 5: 'for-pickup(v-?o-5:Object))
+(0 -> 5: 'at(v-?p1-5:Person v-?loc-5:Location))
+(5 -> 3: 'owns(v-?p1-3:Person money:Object))
+(0 -> 4: 'not('dead(v-?p1-4:Person)))
+(0 -> 4: 'at(v-?p1-4:Person v-?loc1-4:Location))
+(4 -> 3: 'at(v-?p2-3:Person v-?loc-3:Location))
+(0 -> 3: 'at(v-?p1-3:Person v-?loc-3:Location))
+(3 -> goal: 'owns(tom:Person flower:Object))
+(0 -> 2: 'not('dead(v-?p1-2:Person)))
+(0 -> 2: 'at(v-?p1-2:Person v-?loc1-2:Location))
+(2 -> 1: 'at(v-?p2-1:Person v-?loc-1:Location))
+(0 -> 1: 'at(v-?p1-1:Person v-?loc-1:Location))
+(0 -> 1: 'not('dead(v-?p2-1:Person)))
+(0 -> 1: 'not('dead(v-?p1-1:Person)))
+(1 -> goal: 'dead(jack:Person))
+orderings: 
+(0,3), (4,3), (2,goal), (0,5), (0,4), (3,goal), (6,5), (2,6), (4,goal), (2,1), (0,1), (5,goal), (1,6), (1,goal), (0,goal), (5,3), (6,goal), (0,6), (0,2)
+reason: Closed World Assumption: 'not('dead(employee:Person))
+
+List()
+Statistics: visited 19189 nodes in 34.936 seconds
