@@ -5,14 +5,19 @@ import logging._
 import scala.collection.mutable.ListBuffer
 import plan._
 
+/**
+ * A Binding object is a layer added on a hash map, which indexes the VarSet objects with the PopObject or Variable.
+ *  It provides multiple use methods for adding VarSets into the hash map, retrieving them, etc. Most importantly,
+ *  it provides the function to create a new binding which makes two propositions identical or certainly different.
+ */
 class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
-  //  var varsets = List[VarSet]()
-  //  val hashes = new HashMap[Variable, VarSet]()
-  // 
+
   def this() = this(new HashMap[Token, VarSet]())
 
   def +(vs: VarSet): Binding = {
+    // clone the current hash map, for the hash map is mutable.
     val bind = new Binding(hashes.clone())
+    // insert the varset and its indices into the new hash map
     vs.equals.foreach(v => bind.hashes += (v -> vs))
     if (vs.isGrounded())
       bind.hashes += (vs.groundObj -> vs)
@@ -20,6 +25,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
   }
 
   def +(vss: VarSet*): Binding = {
+    // here  vss is a liist of varsets
     val bind = new Binding(hashes.clone())
 
     vss foreach { vs =>
@@ -30,6 +36,10 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
     bind
   }
 
+  /**
+   * returns the varset associated with this token
+   *
+   */
   def get(token: Token) = hashes.get(token)
 
   override def toString(): String =
@@ -51,12 +61,12 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
       val valued = revealTokenValues(matched.get)
       // step 3: check for superficial inconsistencies. If there is, return None
       if (!isPairConsistent(valued)) return None
-      // step 4: check for constraints
+      // step 4: check for constraints and, if the check passes, create a new binding that unifies the two propositions
       unifyWithConstraints(valued, constraints, initial)
     }
 
   /**
-   * superficially tests for unification
+   * superficially tests for unification without checking for constraints
    *
    */
   def canUnify(p1: Proposition, p2: Proposition): Boolean =
@@ -72,7 +82,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
     }
 
   /**
-   * directly unify without testing for superficial inconsistency
+   * directly unify without testing for superficial inconsistency (steps 1-3 in the {@code canUnify()} method)
    * still tests for consistency with constraints
    *
    */
@@ -84,10 +94,15 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
       unifyWithConstraints(valued, constraints, initial)
     }
 
+  /**
+   * add a bunch of neq propositions into the binding
+   *
+   */
   def addNeqs(neqs: List[Proposition]): Binding =
     {
       var newbind = this
       neqs foreach { neq =>
+        // iteam 1 and item2 are the two parameters of the neq proposition
         val item1 = neq.termlist(0).asInstanceOf[Token]
         val item2 = neq.termlist(1).asInstanceOf[Token]
 
@@ -116,7 +131,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
       if (substVars(p1) == substVars(p2)) return Nil
       // step 1: match tokens pairwise
       val matched = matchTokens(p1, p2)
-      if (matched isEmpty) return List(this) // the two propositions are just different
+      if (matched isEmpty) return List(this) // the two propositions are just different, no further operations necessary
       // step 2: retrieve known values for variables that are already bound
       val valued = revealTokenValues(matched.get)
       // step 3: if they are already different, no separation is needed and return this       
@@ -125,6 +140,10 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
       separatePairs(valued)
     }
 
+  /**
+   * match tokens in two propositions into a list of pairs. If it returns None,
+   * matching has failed due to their inherent differences
+   */
   private def matchTokens(p1: Proposition, p2: Proposition): Option[List[(Token, Token)]] =
     {
       // step 0: filter verbs and length
@@ -133,7 +152,12 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
       var answer = new ListBuffer[(Token, Token)]()
 
       (p1.termlist, p2.termlist).zipped.foreach((_, _) match {
-        case (t1: Token, t2: Token) => answer += ((t1, t2))
+        case (t1: Token, t2: Token) => {
+          // check types of the tokens before matching them
+          if (typeCompatible(t1.pType, t2.pType))
+            answer += ((t1, t2))
+          else return None
+        }
         case (p1: Proposition, p2: Proposition) =>
           matchTokens(p1, p2) match {
             case Some(l: List[(Token, Token)]) =>
@@ -179,7 +203,10 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
         x =>
           val b =
             (x._1 == x._2) || (x match {
+              // two objects are only compatible if they are equal
               case (s1: PopObject, s2: PopObject) => s1 == s2
+              // if one of the two is a variable,
+              // they are compatible as long as their varsets are
               case (t1, t2) =>
                 (hashes.get(t1), hashes.get(t2)) match {
                   case (Some(vs1: VarSet), Some(vs2: VarSet)) => vs1.isCompatibleWith(vs2)
@@ -198,7 +225,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
       list.foreach {
         _ match {
 
-          case (s1: PopObject, s2: PopObject) =>
+          case (s1: PopObject, s2: PopObject) => // their consistency is already checked, so we don't check again
           case (v1: Token, v2: Token) =>
             {
               (hashes.get(v1), hashes.get(v2)) match {
@@ -218,10 +245,11 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
             }
         }
       }
-      // check with initials
+      // check with the initial state
+      if (constraints == Nil) return Some(bind)
       val substProps = constraints map { bind substVars _ }
-      debug("all constraints: " + constraints.mkString("\n"))
-      debug(substProps.mkString("substed props:", ", ", "--end"))
+      debug(constraints.mkString("all constraints: ", ", ", " --end"))
+      debug(substProps.mkString("substed props:", ", ", " --end"))
       if (substProps.forall { p: Proposition =>
         initial exists {
           x =>
@@ -231,7 +259,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
             }
             x equalsIgnoreVars p
         }
-      } || substProps == Nil)
+      })
         Some(bind)
       else None
     }
@@ -239,9 +267,9 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
   private def separatePairs(list: List[(Token, Token)]): List[Binding] =
     {
       //for each one of the token pairs
-      // if any is bound to a symbol, find if there is anything that would respect the constraints but not equal
+      // if any is bound to an object, (find if there is anything that would respect the constraints but not equal) (not done)
       // if both are not grounded, just make them different
-      // if both are symbols, ignore this pair
+      // if both are objects, ignore this pair
       var answer = ListBuffer[Binding]()
       var bind: Binding = this
       list.foreach {
@@ -261,7 +289,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
                     /* We do not check if v2 can still take any legal values other than vs1 and vs2's non-equals 
                      * to make the constraints work 
                      * if there is no such value, planning will fail eventually.
-                     * this may be INEFFICIENT */
+                     * this may be INEFFICIENT, but correct */
                     val bind = this + (vs1.bindNotTo(vs2.equalsAndSymbol), vs2.bindNotTo(vs1.equalsAndSymbol))
                     answer += bind
                   }
@@ -274,13 +302,11 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
                   val bind = this + (vs2.bindNotTo(v1), VarSet(v1).bindNotTo(vs2.equalsAndSymbol))
                   answer += bind
                 case (None, None) =>
-                  // simple case there. We can simple create two varsets and let them be different
+                  // simple case here. We can simple create two varsets and let them be different
                   val bind = this + (VarSet(v1).bindNotTo(v2), VarSet(v2).bindNotTo(v1))
                   answer += bind
               }
             }
-          //          case (v1:Variable, s2:PopObject) =>
-          //          case (s1:PopObject, v2:Variable) =>
         }
       }
       answer.toList
@@ -326,6 +352,21 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
    */
   def canEqual(p1: Proposition, p2: Proposition) =
     substVars(p1) equalsIgnoreVars substVars(p2)
+  
+  def typeCompatible(type1:String, type2:String):Boolean =
+  {
+    if (type1 == type2) return true
+    else
+    {
+      val topology = Global.classes
+      if (topology == null) return false
+      
+      // subclass1 and 2 are sets of subclasses of their types
+      val subclass1 = topology.getOrElse(type1, Set())
+      val subclass2 = topology.getOrElse(type2, Set())
+      (subclass1 contains type2) || (subclass2 contains type1)
+    }
+  }
 }
 
 object Binding {

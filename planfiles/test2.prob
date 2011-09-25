@@ -1,9 +1,9 @@
 (problem
 (init 
-	(person tom)(person jack)
-	(owns jack money)
-	(object money)
-	(location home) (location school) (at tom school) (at jack home)
+	
+	(owns jack:Person money:Object)
+	
+	(at tom:Person school:Location) (at jack home:Location)
 )
 (goal
 	(owns tom money)

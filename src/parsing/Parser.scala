@@ -137,13 +137,13 @@ object TotalParser {
 
   def findObjectTypesInActions(action: Action): Action =
     {
-      if (action.parameters.exists(v => v.varType == "Any")) throw new PopParsingException("unspecified parameter type in action: " + action)
+      if (action.parameters.exists(v => v.pType == "Any")) throw new PopParsingException("unspecified parameter type in action: " + action)
 
       var actionHash = typeHash.clone()
       action.parameters foreach { v =>
         if (actionHash.get(v.name).isDefined) throw new PopParsingException("name conflicts: " + v.name + " is repeated.")
         else
-          actionHash += (v.name -> v.varType)
+          actionHash += (v.name -> v.pType)
       }
 
       val newConstraints = action.constraints map { identifyTypes(_, actionHash) }
@@ -164,14 +164,14 @@ object TotalParser {
         {
           _ match {
             case o: PopObject =>
-              if (o.objType == "Any")
+              if (o.pType == "Any")
                 hashmap.get(o.name) match {
                   case Some(storedType) => PopObject(o.name, storedType)
                   case None => throw new PopParsingException("The type of object " + o.name + " cannot be inferred.")
                 }
               else o
             case p: Proposition => identifyTypes(p, hashmap)
-            case v: Variable => if (v.varType == "Any")
+            case v: Variable => if (v.pType == "Any")
               hashmap.get(v.name) match {
                 case Some(storedType) => Variable(v.name, storedType)
                 case None => throw new PopParsingException("The type of variable " + v.name + " cannot be inferred.")
@@ -189,12 +189,12 @@ object TotalParser {
   def collectObjTypes(prop: Proposition) {
     prop.termlist.foreach {
       _ match {
-        case o: PopObject => if (o.objType != "Any") {
+        case o: PopObject => if (o.pType != "Any") {
           typeHash.get(o.name) foreach
             { storedType =>
-              if (storedType != o.objType) throw new PopParsingException("Conflicting types for object: " + o.name + " has type " + storedType + " and " + o.objType)
+              if (storedType != o.pType) throw new PopParsingException("Conflicting types for object: " + o.name + " has type " + storedType + " and " + o.pType)
             }
-          typeHash += (o.name -> o.objType)
+          typeHash += (o.name -> o.pType)
         }
         case p: Proposition => collectObjTypes(p)
         case v: Variable => throw new PopParsingException("There should not be variables in problem specifications")
@@ -207,7 +207,7 @@ class PopParsingException(val message: String) extends Exception(message)
 
 object MainParser {
   def main(args: Array[String]) {
-    val (prob, actions) = TotalParser.parse("./planfiles/problem.txt", "./planfiles/actions.txt")
+    val (prob, actions) = TotalParser.parse("./planfiles/test1.prob", "./planfiles/test1.act")
     println(prob.init)
     println(prob.goal)
     println(prob.subclasses)

@@ -1,6 +1,5 @@
 package plan
-import parsing.ActionParser
-import parsing.ProblemParser
+import parsing.TotalParser
 import variable._
 import bestfirst._
 
@@ -9,24 +8,19 @@ object Main {
     //    val actions = ActionParser.readFile("./planfiles/actions.txt")
     //    val problem = ProblemParser.readFile("./planfiles/problem.txt")
 
-    val actions = try {
-      ActionParser.readFile("./planfiles/test2.act")
+    val (problem, actions) = try {
+      TotalParser.parse("./planfiles/test2.prob", "./planfiles/test2.act")
     } catch {
       case e: RuntimeException =>
-        println("cannot parse action file: " + e.getMessage())
+        println("cannot parse file: " + e.getMessage())
+        e.printStackTrace()
         return
     }
-    val problem = try {
-      ProblemParser.readFile("./planfiles/test2.prob")
-    } catch {
-      case e: RuntimeException =>
-        println("cannot parse problem file: " + e.getMessage())
-        return
-    }
+
     Global.init(actions, problem)
     //Global.setDebug()
     var plan = Global.initPlan()
-    //Global.debug = true
+    //Global.setTrace()
     val parameter = new SearchParameter(500)
     val bestfirst = new BestFirstSearch[Plan](List(plan), FlawRepair.refine _, complete _, eval _, parameter)
 
@@ -54,8 +48,7 @@ object Main {
   }
 
   def plan(actionFile: String, problemFile: String): (Option[Plan], SearchStats) = {
-    val actions = ActionParser.readFile(actionFile)
-    val problem = ProblemParser.readFile(problemFile)
+    val (problem, actions) = TotalParser.parse(problemFile, actionFile)
 
     Global.init(actions, problem)
     var plan = Global.initPlan()

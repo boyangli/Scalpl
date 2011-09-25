@@ -21,7 +21,7 @@ object Global {
   protected var debugLvl = 'normal
   val debugFile = "log.txt"
 
-  def obtainID() =
+  def newPlanID() =
     {
       planGenerated += 1
       planGenerated

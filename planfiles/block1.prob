@@ -4,9 +4,8 @@
 	(on-top blue:Block table)
 	(on-top yellow table:Table)
 	(clear table)
-	(clear yellow)
+	(clear yellow:Block)
 	(clear red)
-	
 )
 (goal
 	(on-top blue table)
@@ -16,4 +15,5 @@
 (classes
 	(subclass Block Platform)
 	(subclass Table Platform)
+)
 )

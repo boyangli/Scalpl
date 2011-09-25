@@ -16,31 +16,30 @@ object FlawRepair extends Logging {
           case _ => throw new Exception("A flaw with no known repairs! " + p.flaws)
         }
       p.children = kids
-      
+
       trace {
-        "new plans: " + 
-        kids.map{
-          plan => 
-            plan.toString + "\n" +
-            plan.planString()
-        } mkString
+        "new plans: " +
+          kids.map {
+            plan =>
+              plan.toString + "\n" +
+                plan.planString()
+          } mkString
       }
-      
+
       kids
     }
 
   def repairThreat(p: Plan, threat: Threat): List[Plan] =
     {
+      // first, check if the threat is still valid
       if (verifyThreat(threat, p)) {
-        // the threat is still valid
-        //var answer = List[Plan]()
-        // first option: separate the two conflicting conditions
 
+        // first option: separate the two conflicting conditions
         val separated = p.binding.separate(threat.effect.negate, threat.threatened.condition) map {
           newbind =>
             debug("Separated " + threat.effect.negate + " and " + threat.threatened.condition)
             p.copy(
-              id = Global.obtainID(),
+              id = Global.newPlanID(),
               binding = newbind,
               flaws = p.flaws - threat,
               reason = "separating " + threat.effect + " and " + threat.threatened.condition,
@@ -53,6 +52,15 @@ object FlawRepair extends Logging {
         val step1 = p.id2step(threat.threatened.id1).get
         val step2 = p.id2step(threat.threatened.id2).get
 
+        /*
+        val constraints = threatStep.constraints ::: step1.constraints ::: step2.constraints
+        val neqs = constraints filter { _.verb == 'neq }
+        val realConstraints = constraints filter { _.verb != 'neq }
+        val neqbind = p.binding.addNeqs(neqs)
+        */
+
+        //here we do not have to add the neq constraints again.
+        // those constraints are added to the binding when steps are added into the plan
         val constraints = threatStep.pureConstraints ::: step1.pureConstraints ::: step2.pureConstraints
         val newbind = p.binding.unify(threat.effect.negate, threat.threatened.condition, constraints, p.initialState)
         val unified = newbind match {
@@ -61,15 +69,14 @@ object FlawRepair extends Logging {
               demote(p, threat, nbind).toList
           case None => Nil
           // unification impossible. not need to demote or promote.
-          // separation must be possible. but it has been done earlier
+          // separation must be possible. but it would have been done earlier, so we return nil here
         }
         // finally, link results of the two options
         unified ::: separated
       } else {
-        // the threat is not valid anymore
-        // just ignore it
+        // the threat is not valid anymore, just remove it
         val newplan = p.copy(
-          id = Global.obtainID(),
+          id = Global.newPlanID(),
           flaws = p.flaws - threat,
           reason = "threat " + threat + " is no longer valid",
           parent = p)
@@ -91,7 +98,7 @@ object FlawRepair extends Logging {
   def insertAction(p: Plan, open: OpenCond): List[Plan] =
     {
       var kids = List[Plan]()
-      val init = p.steps.find(_.id == 0).get.effects // initial state
+      val init = p.initialState
       val highStep = p.stepCount + 1
 
       Global.actionTemplates foreach {
@@ -118,7 +125,7 @@ object FlawRepair extends Logging {
 
                     val newLink = new Link(highStep, open.id, open.condition)
                     val kid = p.copy(
-                      id = Global.obtainID(),
+                      id = Global.newPlanID(),
                       steps = newStep :: p.steps,
                       links = newLink :: p.links,
                       binding = newbind,
@@ -212,30 +219,32 @@ object FlawRepair extends Logging {
       possibleActions foreach {
         oldstep =>
           val stepId = oldstep.id
+
           oldstep.effects foreach {
             effect =>
               if (p.binding.canUnify(effect, open.condition)) // filtering obviously impossible effects
               {
                 debug("trying to reuse effect: " + stepId + ": " + effect + " for " + open.condition)
-                val constraints = (oldstep.constraints ::: p.id2step(open.id).map(_.constraints).getOrElse(Nil)) filterNot {_.verb == 'neq}
+                val constraints = (oldstep.constraints ::: p.id2step(open.id).map(_.constraints).getOrElse(Nil)) filterNot { _.verb == 'neq }
+
                 p.binding.directUnify(effect, open.condition, constraints, init) match {
                   case Some(newbind: Binding) =>
                     debug("reuse succeeds")
-                    var newordering = Set(((stepId, open.id)))
+                    var newOrdering = Set(((stepId, open.id)))
                     val newLink = new Link(stepId, open.id, open.condition)
                     var kid = p.copy(
-                      id = Global.obtainID(),
+                      id = Global.newPlanID(),
                       links = newLink :: p.links,
                       binding = newbind,
                       flaws = p.flaws - open,
-                      ordering = new Ordering(newordering ++ p.ordering.list),
+                      ordering = new Ordering(newOrdering ++ p.ordering.list),
                       reason = "Reused action " + stepId + " to establish " + open.condition,
                       parent = p)
 
                     val threats = detectThreats(newLink, kid)
                     if (threats != Nil) // add detected threats into the plan
                       kid = kid.copy(flaws = threats ::: kid.flaws)
-                      
+
                     kids = kid :: kids
                   case None => debug("reuse failed")
                 }
@@ -258,7 +267,7 @@ object FlawRepair extends Logging {
 
       bindings map { bind =>
         p.copy(
-          id = Global.obtainID(),
+          id = Global.newPlanID(),
           links = new Link(0, open.id, open.condition) :: p.links,
           binding = bind,
           flaws = p.flaws - open,
@@ -271,29 +280,31 @@ object FlawRepair extends Logging {
     {
       val promoted = threat.id
       val top = threat.threatened.id1
-      if (p.ordering.possiblyBefore(top).contains(promoted))
+      if (p.ordering.possiblyBefore(top).contains(promoted)) {
+        debug { "promoted step " + promoted + " before " + top }
         new Some(p.copy(
-          id = Global.obtainID(),
+          id = Global.newPlanID(),
           ordering = p.ordering + ((promoted, top)),
           binding = bind,
           flaws = p.flaws - threat,
           reason = "promoting step " + promoted + " before " + top,
           parent = p))
-      else None
+      } else None
     }
 
   def demote(p: Plan, threat: Threat, bind: Binding): Option[Plan] =
     {
       val demoted = threat.id
       val bottom = threat.threatened.id2
-      if (p.ordering.possiblyAfter(bottom).contains(demoted))
+      if (p.ordering.possiblyAfter(bottom).contains(demoted)) {
+        debug { "demoted step " + demoted + " before " + bottom }
         new Some(p.copy(
-          id = Global.obtainID(),
+          id = Global.newPlanID(),
           ordering = p.ordering + ((bottom, demoted)),
           binding = bind,
           flaws = p.flaws - threat,
           reason = "demoting step " + demoted + " after " + bottom,
           parent = p))
-      else None
+      } else None
     }
 }

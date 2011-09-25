@@ -58,7 +58,7 @@ object Plan {
 
   def getEmpty(): Plan =
     {
-      val id = Global.obtainID()
+      val id = Global.newPlanID()
       new Plan(id, List[Action](), List[Link](), new Ordering(), new Binding(), List[Flaw](), "", null, null)
     }
 }

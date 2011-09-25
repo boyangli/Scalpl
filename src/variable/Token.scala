@@ -39,7 +39,7 @@ case class Proposition(val verb: Symbol, val termlist: List[TopTerm]) extends To
 
       termlist.foreach(_ match {
         case v: Variable => list = v :: list
-        case p: Proposition => list = list ::: p.allVariables()
+        case p: Proposition => list = p.allVariables() ::: list
         case _ =>
       })
 
@@ -118,7 +118,10 @@ object Proposition {
  * Token class. Super class of PopSymbol and Variable
  *
  */
-sealed abstract class Token extends TopTerm
+sealed abstract class Token extends TopTerm {
+  val pType: String
+  def toShortString(): String
+}
 
 /**
  * Basic unit. Represents a symbol. In the Doraemon planner, it is only used for verbs in predicates
@@ -151,18 +154,22 @@ sealed abstract class Token extends TopTerm
  * a basic unit that represents a variable
  *
  */
-case class Variable(val name: String, val varType: String, val number: Int) extends Token {
+case class Variable(val name: String, override val pType: String, val number: Int) extends Token {
 
   def this(name: String, varType: String) = this(name, varType, 0)
 
   override def toString: String =
-    if (number == 0) "v-" + name + ":" + varType
-    else "v-" + name + ":" + varType + "-" + number
+    if (number == 0) "v-" + name + ":" + pType
+    else "v-" + name + "-" + number + ":" + pType
 
-  def instantiate(number: Int) = new Variable(name, varType, number)
+  override def toShortString: String =
+    if (number == 0) "v-" + name
+    else "v-" + name + "-" + number
+
+  def instantiate(number: Int) = new Variable(name, pType, number)
 
   override def equals(o: Any): Boolean = o match {
-    case that: Variable => that.canEqual(this) && (this.name == that.name) && (this.number == that.number)
+    case that: Variable => that.canEqual(this) && (this.name == that.name) && (this.number == that.number) && (this.pType == that.pType)
     case _ => false
   }
 
@@ -187,14 +194,16 @@ object Variable {
  * Story Object. A variable must bind to an object
  *
  */
-case class PopObject(val name: String, val objType: String) extends Token {
-  override def toString() = name + ":" + objType
+case class PopObject(val name: String, override val pType: String) extends Token {
+  override def toString() = name + ":" + pType
+  override def toShortString() = name
+  
   override def equals(o: Any): Boolean = o match {
-    case that: PopObject => that.canEqual(this) && this.name == that.name && this.objType == that.objType
+    case that: PopObject => that.canEqual(this) && this.name == that.name && this.pType == that.pType
     case _ => false
   }
 
-  override def hashCode() = (name.hashCode() * 37 + objType.hashCode() * 23) / 97
+  override def hashCode() = (name.hashCode() * 37 + pType.hashCode() * 23) / 97
 
   def canEqual(o: Any): Boolean = o match {
     case that: PopObject => true

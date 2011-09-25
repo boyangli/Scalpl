@@ -14,10 +14,10 @@ class Action(
   def isValid(): Boolean =
     {
       // all distinct variables referred to by this action 
-      val allvars = (preconditions ::: constraints ::: effects).map(p => p.allVariables).flatten.distinct
+      val allvars = (preconditions ::: constraints ::: effects).flatMap(p => p.allVariables).distinct
       // those not contained in the parameters
-      val newvars = allvars filterNot (parameters contains)
-
+      val newvars = allvars filterNot (x => parameters exists {y => x.name == y.name} )
+      //println("testing action " + name + " " + newvars)
       // they should not exist
       newvars.length == 0
     }
