@@ -16,16 +16,16 @@ object FlawRepair extends Logging {
           case _ => throw new Exception("A flaw with no known repairs! " + p.flaws)
         }
       p.children = kids
-      
+
       trace {
-        "new plans: " + 
-        kids.map{
-          plan => 
-            plan.toString + "\n" +
-            plan.planString()
-        } mkString
+        "new plans: " +
+          kids.map {
+            plan =>
+              plan.toString + "\n" +
+                plan.planString()
+          } mkString
       }
-      
+
       kids
     }
 
@@ -217,7 +217,7 @@ object FlawRepair extends Logging {
               if (p.binding.canUnify(effect, open.condition)) // filtering obviously impossible effects
               {
                 debug("trying to reuse effect: " + stepId + ": " + effect + " for " + open.condition)
-                val constraints = (oldstep.constraints ::: p.id2step(open.id).map(_.constraints).getOrElse(Nil)) filterNot {_.verb == 'neq}
+                val constraints = (oldstep.constraints ::: p.id2step(open.id).map(_.constraints).getOrElse(Nil)) filterNot { _.verb == 'neq }
                 p.binding.directUnify(effect, open.condition, constraints, init) match {
                   case Some(newbind: Binding) =>
                     debug("reuse succeeds")
@@ -235,7 +235,7 @@ object FlawRepair extends Logging {
                     val threats = detectThreats(newLink, kid)
                     if (threats != Nil) // add detected threats into the plan
                       kid = kid.copy(flaws = threats ::: kid.flaws)
-                      
+
                     kids = kid :: kids
                   case None => debug("reuse failed")
                 }
@@ -257,13 +257,21 @@ object FlawRepair extends Logging {
       }
 
       bindings map { bind =>
-        p.copy(
-          id = Global.obtainID(),
-          links = new Link(0, open.id, open.condition) :: p.links,
-          binding = bind,
-          flaws = p.flaws - open,
-          reason = "Closed World Assumption: " + open.condition,
-          parent = p)
+        val newLink = new Link(0, open.id, open.condition)
+        var kid =
+          p.copy(
+            id = Global.obtainID(),
+            links = newLink :: p.links,
+            binding = bind,
+            flaws = p.flaws - open,
+            reason = "Closed World Assumption: " + open.condition,
+            parent = p)
+
+        val threats = detectThreats(newLink, kid)
+        if (threats != Nil) // add detected threats into the plan
+          kid = kid.copy(flaws = threats ::: kid.flaws)
+
+        kid
       }
     }
 
