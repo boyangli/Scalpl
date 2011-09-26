@@ -2,16 +2,16 @@ package plan
 import variable._
 
 case class Plan(
-    val id: Int,
-    val steps: List[Action],
-    val links: List[Link],
-    val ordering: Ordering,
-    val binding: Binding,
-    val flaws: List[Flaw],
-    val reason: String,
-    val parent: Plan,
-    var children: List[Plan],
-    val stepCount: Int = 0) {
+  val id: Int,
+  val steps: List[Action],
+  val links: List[Link],
+  val ordering: Ordering,
+  val binding: Binding,
+  val flaws: List[Flaw],
+  val reason: String,
+  val parent: Plan,
+  var children: List[Plan],
+  val stepCount: Int = 0) {
 
   //var stepCount = 0;
   override def toString(): String = "<Plan[" + id + "] #steps=" + stepCount + ", #flaws=" + flaws.length + ">"
@@ -37,24 +37,65 @@ case class Plan(
       //print("order "+ order)
       for (i <- order if i != 0 && i != Global.GOAL_ID) {
         steps.find(_.id == i) match {
-          case Some(x) => desc += "[" + i + "] " + binding.substVars(x) + "\n"
+          case Some(x) => desc += "[" + i + "] " + binding.substVarsString(x) + "\n"
           case _ => ""
         }
       }
       desc
     }
 
+  def parsibleString(): String =
+    {
+      var answer = "(objects " + collectObjects.mkString(" ") + ")\n" // objects
+      answer += "(initial-state " + initialState.map(_.toShortString).mkString(" ") + ")\n" // initial state
+      
+      val order = ordering.topsort()
+      var stepString = ""
+        
+      for (i <- order if i != 0 && i != Global.GOAL_ID) {
+        steps.find(_.id == i) match {
+          case Some(x) => stepString += "[" + i + "] " + binding.substVarsShortString(x) + "\n"
+          case _ => ""
+        }
+      }
+      
+      answer +=  "(goal-state " + goalState.map(_.toShortString).mkString(" ") + ")\n"
+      answer += "(steps \n" + stepString + ")\n"
+      answer += "(links " + links.map(_.toShortString).mkString("\n") + ")\n" 
+      answer += "(orderings " + ordering.toString() + ")\n"
+
+      answer
+    }
+
+  private def collectObjects(): Set[PopObject] =
+    {
+      var collection = Set[PopObject]()
+      // collect objects from initial / goal states
+      (initialState ::: goalState) foreach { prop =>
+        collection ++= prop.allObjects()
+      }
+
+      // collect objects from all steps
+      steps foreach {
+        _.parameters foreach {
+        	_ match
+        	{
+        	  case o:PopObject => collection += o
+        	  case _ =>
+        	}
+        }
+      }
+
+      collection
+    }
+
   def id2step(id: Int): Option[Action] = steps.find { _.id == id }
 
   def initialState() = steps.find(_.id == 0).get.effects // initial state
+  def goalState() = steps.find(_.id == Global.GOAL_ID).get.preconditions // goal state
 }
 
 object Plan {
-  //  def apply(steps: List[Action], links: List[Link], ordering: Ordering):Plan =
-  //  {
-  //    // TODO: set the id properly
-  //    new Plan(-1, steps, links, ordering, List[Flaw](), "", null)
-  //  }
 
   def getEmpty(): Plan =
     {
@@ -194,7 +235,7 @@ class Ordering(val list: Set[(Int, Int)]) {
           // head is necesssary
           //println("needed")
           store += head
-          rest = head :: rest         
+          rest = head :: rest
         }
         if (tail != Nil) {
           head = tail.head

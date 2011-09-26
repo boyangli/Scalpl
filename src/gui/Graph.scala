@@ -222,7 +222,7 @@ class Graph {
           val name = {
             if (step.id == 0) "Init"
             else if (step.id == Global.GOAL_ID) "Goal"
-            else step.id + ". " + plan.binding.substVars(step).replace("'", "")
+            else step.id + ". " + plan.binding.substVarsString(step).replace("'", "")
           }
           if (step.id == Global.GOAL_ID)
             cellArr(count - 1) = makeCell(name)

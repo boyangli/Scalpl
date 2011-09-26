@@ -9,7 +9,7 @@ object Main {
     //    val problem = ProblemParser.readFile("./planfiles/problem.txt")
 
     val (problem, actions) = try {
-      TotalParser.parse("./planfiles/test3.prob", "./planfiles/test3.act")
+      TotalParser.parse("./planfiles/test2.prob", "./planfiles/test2.act")
     } catch {
       case e: RuntimeException =>
         println("cannot parse file: " + e.getMessage())
@@ -28,15 +28,16 @@ object Main {
       val result = bestfirst.search()
       println("*************************")
       println("Found plan: " + result)
-      println(result.planString())
+//      println(result.planString())
       println(result.detailString())
+      println("parsible:" + result.parsibleString())
 
-      val t = result.links flatMap {
-        link =>
-          FlawRepair.detectThreats(link, result)
-      }
+//      val t = result.links flatMap {
+//        link =>
+//          FlawRepair.detectThreats(link, result)
+//      }
 
-      println(t)
+//      println(t)
     } catch {
       case e: Exception =>
         println("Search Failed: " + e.getMessage)

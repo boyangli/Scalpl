@@ -8,6 +8,7 @@ sealed abstract class TopTerm {
   override def hashCode(): Int
 
   def canEqual(o: Any): Boolean
+  def toShortString():String
 }
 
 case class Proposition(val verb: Symbol, val termlist: List[TopTerm]) extends TopTerm {
@@ -21,6 +22,13 @@ case class Proposition(val verb: Symbol, val termlist: List[TopTerm]) extends To
     else verb + "(" + termlist.mkString(" ") + ")"
   }
 
+  def toShortString(): String =
+    {
+      if (termlist.length == 0)
+        verb.toString.substring(1) + "()"
+      else verb.toString.substring(1) + "(" + termlist.map(_.toShortString).mkString(" ") + ")"
+    }
+
   override def equals(o: Any): Boolean = o match {
     case that: Proposition => that.canEqual(this) && this.verb == that.verb && this.termlist == that.termlist
     case _ => false
@@ -33,13 +41,26 @@ case class Proposition(val verb: Symbol, val termlist: List[TopTerm]) extends To
     case _ => false
   }
 
-  def allVariables(): List[Variable] =
+  def allVariables(): Set[Variable] =
     {
-      var list = List[Variable]()
+      var list = Set[Variable]()
 
       termlist.foreach(_ match {
-        case v: Variable => list = v :: list
-        case p: Proposition => list = p.allVariables() ::: list
+        case v: Variable => list += v
+        case p: Proposition => list = p.allVariables() ++ list
+        case _ =>
+      })
+
+      list
+    }
+
+  def allObjects(): Set[PopObject] =
+    {
+      var list = Set[PopObject]()
+
+      termlist.foreach(_ match {
+        case o: PopObject => list += o
+        case p: Proposition => list = p.allObjects() ++ list
         case _ =>
       })
 
@@ -197,7 +218,7 @@ object Variable {
 case class PopObject(val name: String, override val pType: String) extends Token {
   override def toString() = name + ":" + pType
   override def toShortString() = name
-  
+
   override def equals(o: Any): Boolean = o match {
     case that: PopObject => that.canEqual(this) && this.name == that.name && this.pType == that.pType
     case _ => false

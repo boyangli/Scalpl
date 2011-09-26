@@ -42,6 +42,13 @@ class Action(
   def idText():String = if (isGoal) "goal" else id.toString
   def isGoal():Boolean = id == Global.GOAL_ID
   
+  def toShortString():String =
+  {
+    "(" + name +
+        (if (parameters.length > 0) " " + parameters.map(_.toShortString).mkString(" ") else "") +
+        ")"
+  }
+  
   /** constraints without neqs
    * 
    */

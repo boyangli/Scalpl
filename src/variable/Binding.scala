@@ -329,9 +329,14 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
       }))
     }
 
-  def substVars(a: Action): String =
+  def substVarsString(a: Action): String =
     {
       "(" + a.name + a.parameters.map { x => getBoundedSymbol(x).getOrElse(x) }.mkString(" ", " ", ")")
+    }
+
+  def substVarsShortString(a: Action): String =
+    {
+      "(" + a.name + a.parameters.map { x => getBoundedSymbol(x).getOrElse(x).toShortString }.mkString(" ", " ", ")")
     }
 
   def substVars(p: Proposition, va: Variable, sa: PopObject): Proposition =
@@ -352,21 +357,20 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
    */
   def canEqual(p1: Proposition, p2: Proposition) =
     substVars(p1) equalsIgnoreVars substVars(p2)
-  
-  def typeCompatible(type1:String, type2:String):Boolean =
-  {
-    if (type1 == type2) return true
-    else
+
+  def typeCompatible(type1: String, type2: String): Boolean =
     {
-      val topology = Global.classes
-      if (topology == null) return false
-      
-      // subclass1 and 2 are sets of subclasses of their types
-      val subclass1 = topology.getOrElse(type1, Set())
-      val subclass2 = topology.getOrElse(type2, Set())
-      (subclass1 contains type2) || (subclass2 contains type1)
+      if (type1 == type2) return true
+      else {
+        val topology = Global.classes
+        if (topology == null) return false
+
+        // subclass1 and 2 are sets of subclasses of their types
+        val subclass1 = topology.getOrElse(type1, Set())
+        val subclass2 = topology.getOrElse(type2, Set())
+        (subclass1 contains type2) || (subclass2 contains type1)
+      }
     }
-  }
 }
 
 object Binding {

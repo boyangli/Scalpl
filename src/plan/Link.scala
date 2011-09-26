@@ -9,4 +9,5 @@ val condition:Proposition
 ) {
 
   override def toString():String = "(" + id1 + " -> " + (if(id2 == Global.GOAL_ID) "goal" else id2) + ": " + condition + ")"
+  def toShortString():String = "(" + id1 + " -> " + (if(id2 == Global.GOAL_ID) "goal" else id2) + ": " + condition.toShortString + ")"
 }
