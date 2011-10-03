@@ -35,14 +35,14 @@ object FlawRepair extends Logging {
       if (verifyThreat(threat, p)) {
 
         // first option: separate the two conflicting conditions
-        val separated = p.binding.separate(threat.effect.negate, threat.threatened.condition) map {
+        val separated = p.binding.separate(threat.effect.negate, threat.threatened.precondition) map {
           newbind =>
-            debug("Separated " + threat.effect.negate + " and " + threat.threatened.condition)
+            debug("Separated " + threat.effect.negate + " and " + threat.threatened.precondition)
             p.copy(
               id = Global.newPlanID(),
               binding = newbind,
               flaws = p.flaws - threat,
-              reason = "separating " + threat.effect + " and " + threat.threatened.condition,
+              reason = "separating " + threat.effect + " and " + threat.threatened.precondition,
               parent = p)
         }
         // second option: unify the two and make use of promotion and demotion
@@ -62,7 +62,7 @@ object FlawRepair extends Logging {
         //here we do not have to add the neq constraints again.
         // those constraints are added to the binding when steps are added into the plan
         val constraints = threatStep.pureConstraints ::: step1.pureConstraints ::: step2.pureConstraints
-        val newbind = p.binding.unify(threat.effect.negate, threat.threatened.condition, constraints, p.initialState)
+        val newbind = p.binding.unify(threat.effect.negate, threat.threatened.precondition, constraints, p.initialState)
         val unified = newbind match {
           case Some(nbind) => // unification successful
             promote(p, threat, nbind).toList :::
@@ -123,7 +123,7 @@ object FlawRepair extends Logging {
                         Set(((highStep, open.id)), ((0, highStep)))
                       else Set(((highStep, open.id)), ((0, highStep)), (highStep, Global.GOAL_ID))
 
-                    val newLink = new Link(highStep, open.id, open.condition)
+                    val newLink = new Link(highStep, open.id, effect, open.condition)
                     val kid = p.copy(
                       id = Global.newPlanID(),
                       steps = newStep :: p.steps,
@@ -157,7 +157,7 @@ object FlawRepair extends Logging {
       val stepid = threat.id
       val link = threat.threatened
       val possible = p.ordering.possiblyBefore(link.id2)
-      possible.contains(stepid) && p.binding.canUnify(threat.effect.negate, link.condition)
+      possible.contains(stepid) && p.binding.canUnify(threat.effect.negate, link.precondition)
     }
 
   /**
@@ -177,7 +177,7 @@ object FlawRepair extends Logging {
           step.effects filter { effect =>
             val negated = effect.negate // compute a negated proposition
             // make use of lazy evaluation to save computation
-            p.binding.canEqual(negated, l.condition) && p.binding.canUnify(negated, l.condition)
+            p.binding.canEqual(negated, l.precondition) && p.binding.canUnify(negated, l.precondition)
           } map { effect =>
             new Threat(step.id, effect, l)
           }
@@ -201,7 +201,7 @@ object FlawRepair extends Logging {
           step.effects filter { effect =>
             val negated = effect.negate // compute a negated proposition
             // make use of lazy evaluation to save computation
-            p.binding.canEqual(negated, newlink.condition) && p.binding.canUnify(negated, newlink.condition)
+            p.binding.canEqual(negated, newlink.precondition) && p.binding.canUnify(negated, newlink.precondition)
           } map {
             effect =>
               new Threat(step.id, effect, newlink)
@@ -231,7 +231,7 @@ object FlawRepair extends Logging {
                   case Some(newbind: Binding) =>
                     debug("reuse succeeds")
                     var newOrdering = Set(((stepId, open.id)))
-                    val newLink = new Link(stepId, open.id, open.condition)
+                    val newLink = new Link(stepId, open.id, effect, open.condition)
                     var kid = p.copy(
                       id = Global.newPlanID(),
                       links = newLink :: p.links,
@@ -266,7 +266,7 @@ object FlawRepair extends Logging {
       }
 
       bindings map { bind =>
-        val newLink = new Link(0, open.id, open.condition)
+        val newLink = new Link(0, open.id, Proposition('closedworld), open.condition)
         
         var kid =
           p.copy(

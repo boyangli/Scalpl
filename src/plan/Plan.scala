@@ -61,8 +61,8 @@ case class Plan(
       
       answer +=  "(goal-state " + goalState.map(_.toShortString).mkString(" ") + ")\n"
       answer += "(steps \n" + stepString + ")\n"
-      answer += "(links " + links.map(_.toShortString).mkString("\n") + ")\n" 
-      answer += "(orderings " + ordering.toString() + ")\n"
+      answer += "(links " + links.map(_.toFileString).mkString("\n") + ")\n" 
+      answer += "(orderings " + ordering.toFileString() + ")\n"
 
       answer
     }
@@ -252,6 +252,14 @@ class Ordering(val list: Set[(Int, Int)]) {
         if (pair._2 == Global.GOAL_ID) (pair._1.toString, "goal")
         else pair
       } mkString (", ")
+    }
+  
+    def toFileString(): String =
+    {
+      list map { pair =>
+        if (pair._2 == Global.GOAL_ID) (pair._1.toString, "goal")
+        else pair
+      } mkString (" ")
     }
 
   //def allNodes()

@@ -5,7 +5,7 @@ class Problem(
     val init: List[Proposition], 
     val goal: List[Proposition], 
     val subclasses:Map[String, Set[String]] = scala.collection.immutable.HashMap[String, Set[String]]()
-    ) 
+    )
 
 object Global {
 

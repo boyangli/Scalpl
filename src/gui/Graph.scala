@@ -235,7 +235,7 @@ class Graph {
       plan.links foreach { link =>
         val pair = (link.id1, link.id2)
         val value = hash.get(pair)
-        val condition = plan.binding.substVars(link.condition).toString
+        val condition = plan.binding.substVars(link.precondition).toString
         val s =
           if (value.isDefined) value.get + ", " + condition
           else condition

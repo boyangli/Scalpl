@@ -107,6 +107,7 @@ case class Proposition(val verb: Symbol, val termlist: List[TopTerm]) extends To
 }
 
 object Proposition {
+  def apply(verb:Symbol) = new Proposition(verb, List[TopTerm]())
   def parse(string: String): Proposition = ActionParser.parseAll(ActionParser.prop, string).get
 
 }
@@ -184,9 +185,12 @@ case class Variable(val name: String, override val pType: String, val number: In
     else "v-" + name + "-" + number + ":" + pType
 
   override def toShortString: String =
-    if (number == 0) "v-" + name
-    else "v-" + name + "-" + number
+    if (number == 0) name
+    else name + "-" + number
 
+  def fullName = if (number == 0) "v-" + name 
+    else "v-" + name + "-" + number
+    
   def instantiate(number: Int) = new Variable(name, pType, number)
 
   override def equals(o: Any): Boolean = o match {
