@@ -50,7 +50,7 @@ abstract class AbstractPlanParser extends PopParser {
       val newConstraints = action.constraints map { appendTypesTo(_) }
       val newPreconds = action.preconditions map { appendTypesTo(_) }
       val newEffects = action.effects map { appendTypesTo(_) }
-      new Action(action.id, action.name, action.parameters, newConstraints, newPreconds, newEffects)
+      Action(action.id, action.name, action.parameters, newConstraints, newPreconds, newEffects)
     }
 
   def collectTypes(prop: Proposition) {
@@ -77,15 +77,32 @@ abstract class AbstractPlanParser extends PopParser {
       action.parameters foreach { v =>
         if (actionHash.get(v.name).isDefined) throw new PopParsingException("name conflicts: " + v.name + " is repeated.")
         else
-          actionHash += (v.name -> v)
+          actionHash += (v.name -> v) 
+          // note here we use the name field, not the full name field. 
+          // As the templates are not instantiated, the two fields are actually identical
       }
 
       val newConstraints = action.constraints map { appendTypesTo(_, actionHash) }
 
       val newPreconds = action.preconditions map { appendTypesTo(_, actionHash) }
       val newEffects = action.effects map { appendTypesTo(_, actionHash) }
+      val actor = action.actor match {
+        case v: Variable => if (v.pType == "Any") getOrError(v, v.name, actionHash) else v
+        case o: PopObject => if (o != PopObject.unknown && o.pType == "Any") getOrError(o, o.name, actionHash) else o
+      }
 
-      Action(action.name, action.parameters, newConstraints, newPreconds, newEffects)
+      Action(action.name, actor, action.parameters, newConstraints, newPreconds, newEffects)
+    }
+
+  def getOrError(token: Token, name: String, hash: HashMap[String, Token]): Token =
+    {
+      hash.get(name) match {
+        case Some(stored) => stored
+        case None => token match {
+          case v: Variable => throw new PopParsingException("The type of variable " + v.name + " cannot be inferred.")
+          case o: PopObject => throw new PopParsingException("The type of object " + o.name + " cannot be inferred.")
+        }
+      }
     }
 
   /**
@@ -99,18 +116,13 @@ abstract class AbstractPlanParser extends PopParser {
           _ match {
             case o: PopObject =>
               if (o.pType == "Any")
-                hashmap.get(o.name) match {
-                  case Some(storedObj) => storedObj
-                  case None => throw new PopParsingException("The type of object " + o.name + " cannot be inferred.")
-                }
+                getOrError(o, o.name, hashmap)
               else o
             case p: Proposition => appendTypesTo(p, hashmap)
-            case v: Variable => if (v.pType == "Any")
-              hashmap.get(v.name) match {
-                case Some(storedVar) => storedVar
-                case None => throw new PopParsingException("The type of variable " + v.name + " cannot be inferred.")
-              }
-            else v
+            case v: Variable =>
+              if (v.pType == "Any")
+                getOrError(v, v.name, hashmap)
+              else v
           }
         }
       new Proposition(p.verb, newtermlist)

@@ -12,6 +12,7 @@ class PopParser extends JavaTokenParsers {
   //    case (x:String, y:List[String])
   //  }
   def term: Parser[TopTerm] = popobject | variable | prop
+  def token: Parser[Token] = popobject | variable
   def string: Parser[String] = ("""[-\w]+""".r)
   def symbol: Parser[Symbol] = ("""[\w-\+]+""".r) ^^ { x => Symbol(x) }
   def variable: Parser[Variable] = """\?[-\+\w]+""".r ~ opt(":" ~ """[-\+\w]+""".r) ^^ {
@@ -35,6 +36,8 @@ object ActionParser extends PopParser {
   def refreshHash() {
     typeHash = HashMap[String, Symbol]()
   }
+  
+  def actorParser: Parser[Token] = "(" ~ "actor" ~> token <~ closing 
 
   def readFile(file: String): List[Action] =
     {
@@ -52,18 +55,23 @@ object ActionParser extends PopParser {
     }
 
   def action: Parser[Action] = "(action " ~> string ~ "(" ~ rep(variable) ~ closing ~
+  opt(actorParser) ~
     "(" ~ "constraints " ~ rep(prop) ~ closing ~
     "(" ~ "preconditions" ~ rep(prop) ~ closing ~
     "(" ~ "effects" ~ rep(prop) <~ closing ~
     closing ^^
     {
-      case string ~ "(" ~ list1 ~ x1 ~
+      case name ~ "(" ~ list1 ~ x1 ~ actor ~
         "(" ~ "constraints " ~ list2 ~ x2 ~
         "(" ~ "preconditions" ~ list3 ~ x3 ~
         "(" ~ "effects" ~ list4 =>
         {
           //          println("0: " + string + " 1: " + list1 + " 2: " + list2 + " 3: " + list3 + " 4 " + list4)
-          Action(string, list1, list2, list3, list4)
+          actor match
+          {
+            case Some(act) => Action(name, act, list1, list2, list3, list4)
+            case None => Action(name, list1, list2, list3, list4)
+          }
         }
     }
 }
@@ -119,13 +127,14 @@ class PopParsingException(val message: String) extends Exception(message)
 
 object MainParser {
   def main(args: Array[String]) {
-    val (prob, actions) = TotalParser.parse("./planfiles/test1.prob", "./planfiles/test1.act")
+    val (prob, actions) = TotalParser.parse("./planfiles/test1.prob", "./planfiles/toyphone.act")
     println(prob.init)
     println(prob.goal)
     println(prob.subclasses)
     println
     actions foreach { a =>
       println(a)
+      println(a.actor)
       println(a.constraints)
       println(a.preconditions)
       println(a.effects)

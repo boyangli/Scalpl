@@ -35,8 +35,8 @@ object Global {
   }
 
   def initPlan(): Plan = {
-    val initStep = new Action(0, "init-state", List[Variable](), List[Proposition](), List[Proposition](), initState)
-    val goalStep = new Action(GOAL_ID, "goal", List[Variable](), List[Proposition](), goalState, List[Proposition]())
+    val initStep = Action(0, "init-state", List[Variable](), List[Proposition](), List[Proposition](), initState)
+    val goalStep = Action(GOAL_ID, "goal", List[Variable](), List[Proposition](), goalState, List[Proposition]())
     val flaws = goalStep.preconditions.map(x => new OpenCond(GOAL_ID, x))
     
     Plan(0,

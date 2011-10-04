@@ -1,0 +1,36 @@
+(action pick-up-part (?p1:Person ?part:Object ?whole:Object)
+	(actor ?p1)
+	(constraints (part-of ?part ?whole))
+	(preconditions (not (hold ?p1 ?part)) (near ?p1 ?part))
+	(effects (hold ?p1 ?part) (hold-by-part ?p1 ?part ?whole))
+	)
+
+(action speak-into (?p1:Person ?cup:PhoneCup ?voice:Voice)
+     (actor ?p1)
+	 (constraints )	 
+	 (preconditions (hold ?p1 ?cup) )
+	 (effects (inside ?voice ?cup)) 
+	 )
+	 
+(action transmit (?phone:ToyPhone ?voice:Voice ?cup1:PhoneCup ?cup2:PhoneCup)
+	(actor ?phone)
+	(constraints (neq ?cup1 ?cup2))
+	(preconditions (inside ?voice ?cup1) )
+	(effects (broadcasting ?cup2 ?voice))
+	)
+	
+(action broadcast (?p1:Person ?cup:PhoneCup ?voice:Voice)
+	(actor ?cup)
+	(constraints )
+	(preconditions (hold ?p1 ?cup) (broadcasting ?cup ?voice))
+	(effects (near ?voice ?p1) (not (broadcasting ?cup ?voice)))
+	)
+	
+(action hear (?p1:Person ?voice:Voice)
+	(actor ?p1)
+	(constraints )
+	(preconditions (near ?voice ?p1))
+	(effects (heard ?p1 ?voice))
+	)
+
+	

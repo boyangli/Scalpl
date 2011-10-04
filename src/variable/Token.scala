@@ -140,7 +140,7 @@ object Proposition {
  * Token class. Super class of PopSymbol and Variable
  *
  */
-sealed abstract class Token extends TopTerm {
+sealed abstract class Token (val name:String) extends TopTerm {
   val pType: String
   def toShortString(): String
 }
@@ -176,7 +176,7 @@ sealed abstract class Token extends TopTerm {
  * a basic unit that represents a variable
  *
  */
-case class Variable(val name: String, override val pType: String, val number: Int) extends Token {
+case class Variable(override val name: String, override val pType: String, val number: Int) extends Token(name) {
 
   def this(name: String, varType: String) = this(name, varType, 0)
 
@@ -219,7 +219,7 @@ object Variable {
  * Story Object. A variable must bind to an object
  *
  */
-case class PopObject(val name: String, override val pType: String) extends Token {
+case class PopObject(override val name:String, override val pType: String) extends Token(name) {
   override def toString() = name + ":" + pType
   override def toShortString() = name
 
@@ -238,4 +238,5 @@ case class PopObject(val name: String, override val pType: String) extends Token
 
 object PopObject {
   def apply(symbol: String) = new PopObject(symbol, "Any")
+  val unknown = PopObject("Unknown", "Any")
 }

@@ -24,7 +24,7 @@ object PlanParser extends AbstractPlanParser {
     case x ~ ":" ~ y => PopObject(x, y)
   }
 
-  def token: Parser[Token] = popobject | variable
+  //def token: Parser[Token] = popobject | variable
 
   override def term: Parser[TopTerm] = prop | token
 
@@ -75,8 +75,8 @@ object PlanParser extends AbstractPlanParser {
 
       case initList ~ ")" ~ "(" ~ "goal-state" ~ goalsList ~ ")" ~ "(" ~ "steps" ~ stepList ~ ")" ~ "(" ~ "links" ~ linkList ~ ")" ~ newOrder =>
         // construct a initial step and a goal step
-        val initStep = new Action(0, "init-state", List[Variable](), List[Proposition](), List[Proposition](), initList.map(substObj))
-        val goalStep = new Action(Global.GOAL_ID, "goal", List[Variable](), List[Proposition](), goalsList.map(substObj), List[Proposition]())
+        val initStep = Action(0, "init-state", List[Variable](), List[Proposition](), List[Proposition](), initList.map(substObj))
+        val goalStep = Action(Global.GOAL_ID, "goal", List[Variable](), List[Proposition](), goalsList.map(substObj), List[Proposition]())
 
         val newSteps = initStep :: goalStep :: stepList
 
