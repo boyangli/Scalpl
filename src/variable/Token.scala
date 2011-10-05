@@ -108,7 +108,7 @@ case class Proposition(val verb: Symbol, val termlist: List[TopTerm]) extends To
 
 object Proposition {
   def apply(verb:Symbol) = new Proposition(verb, List[TopTerm]())
-  def parse(string: String): Proposition = ActionParser.parseAll(ActionParser.prop, string).get
+  def parse(string: String): Proposition = ActionParser.parseProposition(string)//ActionParser.parseAll(ActionParser.prop, string).get
 
 }
 

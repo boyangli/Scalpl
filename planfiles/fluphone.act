@@ -1,0 +1,22 @@
+(action cough-into (?p1:Person ?cup:Object ?virus:Virus)
+     (actor ?p1)
+	 (constraints )	 
+	 (preconditions (hold ?p1 ?cup) (infected-by ?p1 ?virus))
+	 (effects (inside ?virus ?cup)) 
+	 )	 
+	
+(action self-cure (?p1:Person ?virus:Virus)
+	(actor ?p1)
+	(constraints )
+	(preconditions (infected-by ?p1 ?virus))
+	(effects (not (infected-by ?p1 ?virus)))
+	)
+	
+(action infected-by (?p1:Person ?virus:Virus)
+	(actor ?p1)
+	(constraints )
+	(preconditions (near ?virus ?p1))
+	(effects (infected-by ?p1 ?virus))
+	)
+
+	

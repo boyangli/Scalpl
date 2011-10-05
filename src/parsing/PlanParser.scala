@@ -5,14 +5,14 @@ import scala.collection.mutable.HashMap
 
 object PlanParser extends AbstractPlanParser {
 
-  var actionTemplates = List[Action]()
-  var planBinding = new Binding()
+  protected var actionTemplates = List[Action]()
+  protected var planBinding = new Binding()
 
   //  override def variable: Parser[Variable] = """\?[\+\w]+""".r ~ "-" ~ integer ^^ {
   //    case x ~ "-" ~ y => new Variable(x, "Any", y.toInt)
   //  }
 
-  override def variable: Parser[Variable] = """\?[\+\w-]+-[0-9]+""".r ^^ {
+  protected override def variable: Parser[Variable] = """\?[\+\w-]+-[0-9]+""".r ^^ {
     x =>
       val index = x.lastIndexOf("-")
       val name = x.substring(0, index)
@@ -20,27 +20,27 @@ object PlanParser extends AbstractPlanParser {
       Variable(name, "Any", number)
   }
 
-  def fullobject: Parser[PopObject] = ("""[\w-\+]+""".r) ~ ":" ~ """[-\+\w]+""".r ^^ {
+  protected def fullobject: Parser[PopObject] = ("""[\w-\+]+""".r) ~ ":" ~ """[-\+\w]+""".r ^^ {
     case x ~ ":" ~ y => PopObject(x, y)
   }
 
   //def token: Parser[Token] = popobject | variable
 
-  override def term: Parser[TopTerm] = prop | token
+  protected override def term: Parser[TopTerm] = prop | token
 
   override def prop: Parser[Proposition] = symbol ~ "(" ~ rep(term) <~ ")" ^^ {
     case symbol ~ "(" ~ list => Proposition(symbol, list)
   }
 
-  def objects: Parser[List[PopObject]] = "(" ~ "objects" ~> rep(fullobject) <~ ")"
+  protected def objects: Parser[List[PopObject]] = "(" ~ "objects" ~> rep(fullobject) <~ ")"
 
-  def integer: Parser[Int] = """[0-9]+""".r ^^ { x => x.toInt }
+  protected def integer: Parser[Int] = """[0-9]+""".r ^^ { x => x.toInt }
 
-  def goalId: Parser[Int] = "goal" ^^ { x => Global.GOAL_ID }
+  protected def goalId: Parser[Int] = "goal" ^^ { x => Global.GOAL_ID }
 
-  def stepId: Parser[Int] = integer | goalId
+  protected def stepId: Parser[Int] = integer | goalId
 
-  def step: Parser[Action] = "[" ~> integer ~ "]" ~ "(" ~ rep(string) <~ ")" ^^ {
+  protected def step: Parser[Action] = "[" ~> integer ~ "]" ~ "(" ~ rep(string) <~ ")" ^^ {
     case number ~ "]" ~ "(" ~ terms =>
       val temp = actionTemplates.find(action => action.name == terms(0))
 
@@ -55,22 +55,27 @@ object PlanParser extends AbstractPlanParser {
 
       planBinding.unify(new Proposition('temp, template.parameters), new Proposition('temp, realParas), List[Proposition](), List[Proposition]()) match {
         case Some(b) => planBinding = b
-        case None => throw new PopParsingException("Cannot binding corresponding action parameters: " + terms.mkString(" "))
+        case None => 
+          {
+            println(template.parameters.mkString(" "))
+            println(realParas.mkString(" "))
+            throw new PopParsingException("Cannot bind corresponding action parameters: " + terms.mkString(" "))
+          }
       }
 
       template
   }
 
-  def link: Parser[Link] = "(" ~> stepId ~ "->" ~ stepId ~ ":" ~ prop ~ prop <~ ")" ^^ {
+  protected def link: Parser[Link] = "(" ~> stepId ~ "->" ~ stepId ~ ":" ~ prop ~ prop <~ ")" ^^ {
     case id1 ~ "->" ~ id2 ~ ":" ~ prop1 ~ prop2 =>
       new Link(id1, id2, prop1, prop2)
   }
 
-  def stepPair: Parser[(Int, Int)] = "(" ~> stepId ~ "," ~ stepId <~ ")" ^^ { case id1 ~ "," ~ id2 => (id1, id2) }
+  protected def stepPair: Parser[(Int, Int)] = "(" ~> stepId ~ "," ~ stepId <~ ")" ^^ { case id1 ~ "," ~ id2 => (id1, id2) }
 
-  def ordering: Parser[Ordering] = "(" ~ "orderings" ~> rep(stepPair) <~ ")" ^^ { ods => new Ordering(ods.toSet[(Int, Int)]) }
+  protected def ordering: Parser[Ordering] = "(" ~ "orderings" ~> rep(stepPair) <~ ")" ^^ { ods => new Ordering(ods.toSet[(Int, Int)]) }
 
-  def planParse: Parser[Plan] = "(" ~ "initial-state" ~> rep(prop) ~ ")" ~ "(" ~ "goal-state" ~ rep(prop) ~ ")" ~ "(" ~ "steps" ~
+  protected def planParse: Parser[Plan] = "(" ~ "initial-state" ~> rep(prop) ~ ")" ~ "(" ~ "goal-state" ~ rep(prop) ~ ")" ~ "(" ~ "steps" ~
     rep(step) ~ ")" ~ "(" ~ "links" ~ rep(link) ~ ")" ~ ordering ^^ {
 
       case initList ~ ")" ~ "(" ~ "goal-state" ~ goalsList ~ ")" ~ "(" ~ "steps" ~ stepList ~ ")" ~ "(" ~ "links" ~ linkList ~ ")" ~ newOrder =>
@@ -87,7 +92,7 @@ object PlanParser extends AbstractPlanParser {
           stepCount = stepList.length)
     }
 
-  def substObj(termlist: List[TopTerm]): List[TopTerm] =
+  protected def substObj(termlist: List[TopTerm]): List[TopTerm] =
     {
       termlist map {
         _ match {
@@ -98,7 +103,7 @@ object PlanParser extends AbstractPlanParser {
       }
     }
 
-  def substObj(p: Proposition): Proposition =
+  protected def substObj(p: Proposition): Proposition =
     {
       val newlist = substObj(p.termlist)
 
@@ -109,10 +114,13 @@ object PlanParser extends AbstractPlanParser {
   //    case x ~ y => (x, y)
   //  }
 
-  def parse(actionFile: String, planFile: String): (List[Action], Plan) =
+  def parse(actionFile: String, problemFile:String, planFile: String): (List[Action], Plan) =
     {
       actionTemplates = ActionParser.readFile(actionFile)
-      
+      // we need the problem file to read in the class hierarchies
+      val problem = ProblemParser.readFile(problemFile)
+      Global.classes = problem.subclasses
+
       val plantext = scala.io.Source.fromFile(planFile)
 
       val objlines = plantext.getLine(0)
@@ -124,36 +132,9 @@ object PlanParser extends AbstractPlanParser {
 
       actionTemplates = actionTemplates map { appendTypesToTemplate }
 
-      //println(objectHash)
+      println(objectHash)
 
-      val steplines = plantext.mkString 
-
-      /*val steplines = """(initial-state owns(jack money) at(tom school) at(jack home))
-      (goal-state owns(tom money) dead(jack) at(tom home))
-      (steps 
-      [2] (move tom school home)
-      [4] (kill tom jack home)
-      [3] (dead-drop jack money home)
-      [1] (pick-up tom money home)
-      )
-      (links (2 -> goal: at(?p1-2 ?loc2-2) at(tom home))
-(4 -> goal: dead(?p2-4) dead(jack))
-(2 -> 1: at(?p1-2 ?loc2-2) at(?p1-1 ?loc-1))
-(0 -> 4: at(jack home) at(?p2-4 ?loc-4))
-(2 -> 4: at(?p1-2 ?loc2-2) at(?p1-4 ?loc-4))
-(0 -> 4: closedworld() not(dead(?p2-4)))
-(0 -> 4: closedworld() not(dead(?p1-4)))
-(4 -> 3: dead(?p2-4) dead(?p1-3))
-(0 -> 3: owns(jack money) owns(?p1-3 ?o-3))
-(0 -> 3: at(jack home) at(?p1-3 ?loc-3))
-(3 -> 1: for-pickup(?o-3) for-pickup(?o-1))
-(0 -> 2: closedworld() not(dead(?p1-2)))
-(0 -> 2: at(tom school) at(?p1-2 ?loc1-2))
-(2 -> 1: at(?p1-2 ?loc2-2) at(?p1-1 ?loc-1))
-(1 -> goal: owns(?p1-1 ?o-1) owns(tom money)))
-      (orderings (0,3) (4,3) (2,goal) (0,4) (3,goal) (4,goal) (2,4) (2,1) (0,1) (1,goal) (0,goal) (3,1) (0,2))
-      """
-      */
+      val steplines = plantext.mkString
 
       var plan: Plan = parseAll(planParse, steplines).get
 
@@ -170,13 +151,12 @@ object PlanParser extends AbstractPlanParser {
 
       plan = plan.copy(
         links = planlinks,
-        binding = planBinding
-        )
+        binding = planBinding)
 
       //println(plan.links.map(_.toFileString()).mkString("\n"))
-        println(plan.links(2).effect)
-        println(plan.links(2).precondition)
-        println(plan.detailString())
+      println(plan.links(2).effect)
+      println(plan.links(2).precondition)
+      println(plan.detailString())
       (actionTemplates, plan)
     }
 

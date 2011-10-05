@@ -1,12 +1,18 @@
 (problem
 (init 
-	(owns jack:Person money:Object)
-	(owns employee:Person flower:Object) (likes tom jill:Person) (likes jill:Person flower) 
-	(at tom:Person school:Location) (at jack home:Location) (at employee shop:Location) (at jill school)
+	(part-of cup1:PhoneCup toy-phone:ToyPhone)
+	(part-of cup2:PhoneCup toy-phone:ToyPhone)
+	(near adam:Person cup1)
+	(near bob:Person cup2)
+	(near adam toy-phone)
+	(near bob toy-phone)
+	(knows adam voice:Voice)
 )
 (goal
-	(dead jack)
-	(owns tom flower)
-	(not (dead employee))
+	(heard bob voice)
+)
+(classes
+	(subclass PhoneCup Object)
+	(subclass ToyPhone Object)
 )
 )

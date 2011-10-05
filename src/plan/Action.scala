@@ -1,14 +1,15 @@
 package plan
 import variable._
+import logging._
 
 class Action(
-    val id: Int,
-    val name: String,
-    val actor: Token,
-    val parameters: List[Variable],
-    val constraints: List[Proposition],
-    val preconditions: List[Proposition],
-    val effects: List[Proposition]) {
+  val id: Int,
+  val name: String,
+  val actor: Token,
+  val parameters: List[Variable],
+  val constraints: List[Proposition],
+  val preconditions: List[Proposition],
+  val effects: List[Proposition]) extends Logging {
 
   require(isValid())
 
@@ -20,17 +21,27 @@ class Action(
       val newvars = allvars filterNot (x => parameters exists { y => x.name == y.name })
       //println("testing action " + name + " " + newvars)
       // they should not exist
-      //println("actor = " + actor)
+      //println("params = " + parameters + " actor = " + actor + " new vars" + newvars)
+      debug {
+        if (newvars.length != 0) {
+          "extra variables " + newvars + " in action " + name
+
+        } else if (actor != PopObject.unknown && !parameters.exists(p => p.name == actor.name)) {
+          "actor " + actor + " doesn't exist in parameter list in action " + name
+        }
+        else ""
+      }
+      
       (newvars.length == 0) && (actor == PopObject.unknown || parameters.exists(p => p.name == actor.name))
     }
 
   def instantiate(number: Int): Action =
     {
       new Action(
-        number, name, 
-        actor match{
-          case v:Variable => v instantiate number
-          case o:Object => o
+        number, name,
+        actor match {
+          case v: Variable => v instantiate number
+          case o: Object => o
         },
         parameters.map(_ instantiate number),
         constraints.map(Action.instanProp(_, number)),
@@ -60,20 +71,32 @@ class Action(
    *
    */
   def pureConstraints() = constraints filterNot (_.verb == 'neq)
+
+  /**
+   * equality check based on name and id
+   *
+   */
+  override def equals(that: Any) =
+    that match {
+      case a: Action => a.canEqual(this) && a.name == this.name && a.id == this.id
+      case _ => false
+    }
+
+  def canEqual(that: Any) = that.isInstanceOf[Action]
 }
 
 object Action {
 
   def apply(id: Int, name: String, parameters: List[Variable], constraints: List[Proposition],
-            preconditions: List[Proposition], effects: List[Proposition]): Action =
+    preconditions: List[Proposition], effects: List[Proposition]): Action =
     new Action(id, name, PopObject.unknown, parameters, constraints, preconditions, effects)
 
   def apply(name: String, actor: Token, parameters: List[Variable], constraints: List[Proposition],
-            preconditions: List[Proposition], effects: List[Proposition]): Action =
+    preconditions: List[Proposition], effects: List[Proposition]): Action =
     new Action(-1, name, actor, parameters, constraints, preconditions, effects)
 
   def apply(name: String, parameters: List[Variable], constraints: List[Proposition],
-            preconditions: List[Proposition], effects: List[Proposition]): Action =
+    preconditions: List[Proposition], effects: List[Proposition]): Action =
     new Action(-1, name, PopObject.unknown, parameters, constraints, preconditions, effects)
 
   private def instanProp(prop: Proposition, number: Int): Proposition =

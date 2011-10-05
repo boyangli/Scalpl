@@ -9,7 +9,8 @@ object Main {
     //    val problem = ProblemParser.readFile("./planfiles/problem.txt")
 
     val (problem, actions) = try {
-      TotalParser.parse("./planfiles/test2.prob", "./planfiles/test2.act")
+      //TotalParser.parse("./planfiles/test2.prob", "./planfiles/test2.act")
+      TotalParser.parse("./planfiles/toyphone.prob", "./planfiles/toyphone.act")
     } catch {
       case e: RuntimeException =>
         println("cannot parse file: " + e.getMessage())

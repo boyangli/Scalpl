@@ -1,0 +1,11 @@
+(problem
+(init 
+
+)
+(goal
+	(infected-by bob:Person virus:Virus)
+)
+(classes
+	(subclass Virus Object)	
+)
+)

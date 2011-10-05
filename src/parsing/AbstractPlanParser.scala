@@ -59,7 +59,8 @@ abstract class AbstractPlanParser extends PopParser {
         case o: PopObject => if (o.pType != "Any") {
           objectHash.get(o.name) foreach
             { storedType =>
-              if (storedType != o.pType) throw new PopParsingException("Conflicting types for object: " + o.name + " has type " + storedType + " and " + o.pType)
+              //println(storedType.length + " " + o.pType.length)
+              if (storedType.pType != o.pType) throw new PopParsingException("Conflicting types for object: " + o.name + " has type " + storedType + " and " + o.pType)
             }
           objectHash += (o.name -> o)
         }

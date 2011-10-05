@@ -11,15 +11,15 @@ class PopParser extends JavaTokenParsers {
   //  {
   //    case (x:String, y:List[String])
   //  }
-  def term: Parser[TopTerm] = popobject | variable | prop
-  def token: Parser[Token] = popobject | variable
-  def string: Parser[String] = ("""[-\w]+""".r)
-  def symbol: Parser[Symbol] = ("""[\w-\+]+""".r) ^^ { x => Symbol(x) }
-  def variable: Parser[Variable] = """\?[-\+\w]+""".r ~ opt(":" ~ """[-\+\w]+""".r) ^^ {
+  protected def term: Parser[TopTerm] = popobject | variable | prop
+  protected def token: Parser[Token] = popobject | variable
+  protected def string: Parser[String] = ("""[-\w]+""".r)
+  protected def symbol: Parser[Symbol] = ("""[\w-\+]+""".r) ^^ { x => Symbol(x) }
+  protected def variable: Parser[Variable] = """\?[-\+\w]+""".r ~ opt(":" ~ """[-\+\w]+""".r) ^^ {
     case x ~ Some(":" ~ y) => Variable(x, y)
     case x ~ None => Variable(x)
   }
-  def popobject: Parser[PopObject] = ("""[\w-\+]+""".r) ~ opt(":" ~ """[-\+\w]+""".r) ^^ {
+  protected def popobject: Parser[PopObject] = ("""[\w-\+]+""".r) ~ opt(":" ~ """[-\+\w]+""".r) ^^ {
     case x ~ Some(":" ~ y) => PopObject(x, y)
     case x ~ None => PopObject(x)
   }
@@ -28,7 +28,13 @@ class PopParser extends JavaTokenParsers {
   }
 }
 
+object PopParser {
+  //def parseProposition(string: String): Proposition = parseAll(prop, string).get
+}
+
 object ActionParser extends PopParser {
+
+  def parseProposition(string: String): Proposition = parseAll(prop, string).get
 
   var inAction = false
   var typeHash = HashMap[String, Symbol]()
@@ -36,8 +42,8 @@ object ActionParser extends PopParser {
   def refreshHash() {
     typeHash = HashMap[String, Symbol]()
   }
-  
-  def actorParser: Parser[Token] = "(" ~ "actor" ~> token <~ closing 
+
+  def actorParser: Parser[Token] = "(" ~ "actor" ~> token <~ closing
 
   def readFile(file: String): List[Action] =
     {
@@ -55,7 +61,7 @@ object ActionParser extends PopParser {
     }
 
   def action: Parser[Action] = "(action " ~> string ~ "(" ~ rep(variable) ~ closing ~
-  opt(actorParser) ~
+    opt(actorParser) ~
     "(" ~ "constraints " ~ rep(prop) ~ closing ~
     "(" ~ "preconditions" ~ rep(prop) ~ closing ~
     "(" ~ "effects" ~ rep(prop) <~ closing ~
@@ -67,8 +73,7 @@ object ActionParser extends PopParser {
         "(" ~ "effects" ~ list4 =>
         {
           //          println("0: " + string + " 1: " + list1 + " 2: " + list2 + " 3: " + list3 + " 4 " + list4)
-          actor match
-          {
+          actor match {
             case Some(act) => Action(name, act, list1, list2, list3, list4)
             case None => Action(name, list1, list2, list3, list4)
           }
@@ -83,33 +88,30 @@ object ProblemParser extends PopParser {
     {
       case list1 ~
         ")" ~ "(" ~ "goal" ~ list2 ~ ")" ~ None => new Problem(list1, list2)
-        
+
       case list1 ~
         ")" ~ "(" ~ "goal" ~ list2 ~ ")" ~ Some("(" ~ "classes" ~ list3 ~ ")") =>
-          // this is where we read in subclass information
-          // for now we do not infer subclasses
-          // that is, all class hierarchies, explicit or implied, must be supplied by the user 
-          var classHash = new HashMap[String, Set[String]]()
-          list3 foreach {prop =>
-            prop.verb match
-            {
-              case 'subclass =>
-                val subclass = prop.termlist(0).asInstanceOf[PopObject].name
-                val superclass = prop.termlist(1).asInstanceOf[PopObject].name
-                if (classHash.contains(superclass))
-                {
-                  val set = classHash.get(superclass).get + subclass
-                  classHash += (superclass -> set)
-                }
-                else
-                  classHash += (superclass -> Set(subclass))
-                  
-              case _ => throw new PopParsingException("invalid propositions in the class section: " + prop)
-            }
+        // this is where we read in subclass information
+        // for now we do not infer subclasses
+        // that is, all class hierarchies, explicit or implied, must be supplied by the user 
+        var classHash = new HashMap[String, Set[String]]()
+        list3 foreach { prop =>
+          prop.verb match {
+            case 'subclass =>
+              val subclass = prop.termlist(0).asInstanceOf[PopObject].name
+              val superclass = prop.termlist(1).asInstanceOf[PopObject].name
+              if (classHash.contains(superclass)) {
+                val set = classHash.get(superclass).get + subclass
+                classHash += (superclass -> set)
+              } else
+                classHash += (superclass -> Set(subclass))
+
+            case _ => throw new PopParsingException("invalid propositions in the class section: " + prop)
           }
-          // convert it into an immutable hash map
-          println(classHash.toMap[String, Set[String]])
-          new Problem(list1, list2, classHash.toMap[String, Set[String]])
+        }
+        // convert it into an immutable hash map
+        println(classHash.toMap[String, Set[String]])
+        new Problem(list1, list2, classHash.toMap[String, Set[String]])
     }
 
   def readFile(file: String): Problem =
@@ -120,8 +122,6 @@ object ProblemParser extends PopParser {
       prob
     }
 }
-
-
 
 class PopParsingException(val message: String) extends Exception(message)
 
