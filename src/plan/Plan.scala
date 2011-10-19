@@ -9,6 +9,7 @@ case class Plan(
     val binding: Binding,
     val flaws: List[Flaw],
     val reason: String,
+    val history: List[Record],
     val parent: Plan,
     var children: List[Plan],
     val stepCount: Int = 0) {
