@@ -8,17 +8,18 @@ class PlanLike(
   val binding: Binding)
 
 case class Plan(
-  val id: Int,
-  override val steps: List[Action],
-  override val links: List[Link],
-  override val ordering: Ordering,
-  override val binding: Binding,
-  val flaws: List[Flaw],
-  val reason: String,
-  val matchings: List[Matching],
-  val parent: Plan,
-  var children: List[Plan],
-  val stepCount: Int = 0) extends PlanLike(steps, links, ordering, binding) {
+    val id: Int,
+    override val steps: List[Action],
+    override val links: List[Link],
+    override val ordering: Ordering,
+    override val binding: Binding,
+    val flaws: List[Flaw],
+    val reason: String,
+    val history: List[Record],
+    val matchings: List[Matching],
+    val parent: Plan,
+    var children: List[Plan],
+    val stepCount: Int = 0) extends PlanLike(steps, links, ordering, binding) {
 
   override def toString(): String = "<Plan[" + id + "] #steps=" + stepCount + ", #flaws=" + flaws.length + ">"
 
@@ -29,6 +30,7 @@ case class Plan(
       desc += links.mkString("links: \n", "\n", "\n")
       desc += "orderings: \n" + ordering.toString() + "\n"
       desc += "reason: " + reason + "\n"
+      desc += "history: " + history.mkString(", ") + "\n"
       desc
     }
 
@@ -48,6 +50,13 @@ case class Plan(
         }
       }
       desc
+    }
+
+  def getEmpty(): Plan =
+    {
+      val id = Global.newPlanID()
+      new Plan(id, List[Action](), List[Link](), new Ordering(), new Binding(), List[Flaw](), "",
+        List[Record](), List[Matching](), null, null)
     }
 
   def parsibleString(): String =
@@ -103,13 +112,12 @@ case class Plan(
 object Plan {
 
   def apply(id: Int, steps: List[Action], links: List[Link], ordering: Ordering, binding: Binding, flaws: List[Flaw], reason: String,
-    parent: Plan, children: List[Plan]) =
-    new Plan(id, steps, links, ordering, binding, flaws, reason, List[Matching](), parent, children)
+            parent: Plan, children: List[Plan]) =
+    new Plan(id, steps, links, ordering, binding, flaws, reason, List[Record](), List[Matching](), parent, children)
 
   def getEmpty(): Plan =
     {
       val id = Global.newPlanID()
-      new Plan(id, List[Action](), List[Link](), new Ordering(), new Binding(), List[Flaw](), "", List[Matching](), null, null)
+      new Plan(id, List[Action](), List[Link](), new Ordering(), new Binding(), List[Flaw](), "", List[Record](), List[Matching](), null, null)
     }
 }
-

@@ -79,6 +79,8 @@ object Global {
       new Binding(),
       flaws,
       "initial plan",
+      List[Record](),
+      List[Matching](),
       null,
       null)
   }

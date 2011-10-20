@@ -38,11 +38,13 @@ object FlawRepair extends Logging {
         val separated = p.binding.separate(threat.effect.negate, threat.threatened.precondition) map {
           newbind =>
             debug("Separated " + threat.effect.negate + " and " + threat.threatened.precondition)
+            val reasonString = "separating " + threat.effect + " and " + threat.threatened.precondition
             p.copy(
               id = Global.newPlanID(),
               binding = newbind,
               flaws = p.flaws - threat,
-              reason = "separating " + threat.effect + " and " + threat.threatened.precondition,
+              reason = reasonString,
+              history = new Record("separate", threat.id, reasonString) :: p.history,
               parent = p)
         }
         // second option: unify the two and make use of promotion and demotion
@@ -75,6 +77,7 @@ object FlawRepair extends Logging {
         unified ::: separated
       } else {
         // the threat is not valid anymore, just remove it
+        // no history records necessary
         val newplan = p.copy(
           id = Global.newPlanID(),
           flaws = p.flaws - threat,
@@ -124,6 +127,8 @@ object FlawRepair extends Logging {
                       else Set(((highStep, open.id)), ((0, highStep)), (highStep, Global.GOAL_ID))
 
                     val newLink = new Link(highStep, open.id, effect, open.condition)
+                    
+                    val reasonString = "Inserted action " + highStep + " to establish " + open.condition
                     val kid = p.copy(
                       id = Global.newPlanID(),
                       steps = newStep :: p.steps,
@@ -131,7 +136,8 @@ object FlawRepair extends Logging {
                       binding = newbind,
                       flaws = newStep.preconditions.map { p => new OpenCond(highStep, p) } ::: (p.flaws - open),
                       ordering = new Ordering(newordering ++ p.ordering.list),
-                      reason = "Inserted action " + highStep + " to establish " + open.condition,
+                      reason = reasonString,
+                      history = new Record("insert", highStep, reasonString) :: p.history,
                       parent = p,
                       stepCount = highStep)
 
@@ -232,13 +238,15 @@ object FlawRepair extends Logging {
                     debug("reuse succeeds")
                     var newOrdering = Set(((stepId, open.id)))
                     val newLink = new Link(stepId, open.id, effect, open.condition)
+                    val reasonString = "Reused action " + stepId + " to establish " + open.condition
                     var kid = p.copy(
                       id = Global.newPlanID(),
                       links = newLink :: p.links,
                       binding = newbind,
                       flaws = p.flaws - open,
                       ordering = new Ordering(newOrdering ++ p.ordering.list),
-                      reason = "Reused action " + stepId + " to establish " + open.condition,
+                      reason = reasonString,
+                      history = new Record("reuse", stepId, reasonString) :: p.history,
                       parent = p)
 
                     val threats = detectThreats(newLink, kid)
@@ -267,16 +275,16 @@ object FlawRepair extends Logging {
 
       bindings map { bind =>
         val newLink = new Link(0, open.id, Proposition('closedworld), open.condition)
-        
+        val reasonString = "Closed World Assumption: " + open.condition
         var kid =
           p.copy(
             id = Global.newPlanID(),
             links = newLink :: p.links,
             binding = bind,
             flaws = p.flaws - open,
-            reason = "Closed World Assumption: " + open.condition,
+            reason = reasonString,
+            history = new Record("closed-world", open.id, reasonString) :: p.history,
             parent = p)
-
         val threats = detectThreats(newLink, kid)
         if (threats != Nil) // add detected threats into the plan
           kid = kid.copy(flaws = threats ::: kid.flaws)
@@ -290,13 +298,15 @@ object FlawRepair extends Logging {
       val promoted = threat.id
       val top = threat.threatened.id1
       if (p.ordering.possiblyBefore(top).contains(promoted)) {
-        debug { "promoted step " + promoted + " before " + top }
+        debug { "promoted step " + promoted + " before " + top }      
+        val reasonString = "promoting step " + promoted + " before " + top
         new Some(p.copy(
           id = Global.newPlanID(),
           ordering = p.ordering + ((promoted, top)),
           binding = bind,
           flaws = p.flaws - threat,
-          reason = "promoting step " + promoted + " before " + top,
+          reason = reasonString,
+          history = new Record("promote", promoted, reasonString) :: p.history,
           parent = p))
       } else None
     }
@@ -307,12 +317,14 @@ object FlawRepair extends Logging {
       val bottom = threat.threatened.id2
       if (p.ordering.possiblyAfter(bottom).contains(demoted)) {
         debug { "demoted step " + demoted + " before " + bottom }
-        new Some(p.copy(
+        val reasonString = "demoting step " + demoted + " after " + bottom
+        new Some(p.copy(      
           id = Global.newPlanID(),
           ordering = p.ordering + ((bottom, demoted)),
           binding = bind,
           flaws = p.flaws - threat,
-          reason = "demoting step " + demoted + " after " + bottom,
+          reason = reasonString,
+          history = new Record("demote", demoted, reasonString) :: p.history,
           parent = p))
       } else None
     }
