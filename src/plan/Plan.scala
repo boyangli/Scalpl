@@ -24,6 +24,7 @@ case class Plan(
       desc += links.mkString("links: \n", "\n", "\n")
       desc += "orderings: \n" + ordering.toString() + "\n"
       desc += "reason: " + reason + "\n"
+      desc += "history: " + history.mkString(", ") + "\n"
       desc
     }
 
@@ -60,7 +61,7 @@ object Plan {
   def getEmpty(): Plan =
     {
       val id = Global.obtainID()
-      new Plan(id, List[Action](), List[Link](), new Ordering(), new Binding(), List[Flaw](), "", null, null)
+      new Plan(id, List[Action](), List[Link](), new Ordering(), new Binding(), List[Flaw](), "", List[Record](), null, null)
     }
 }
 

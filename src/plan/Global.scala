@@ -40,6 +40,7 @@ object Global {
       new Binding(),
       flaws,
       "initial plan",
+      List[Record](),
       null,
       null)
   }

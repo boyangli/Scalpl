@@ -10,14 +10,14 @@ object Main {
     //    val problem = ProblemParser.readFile("./planfiles/problem.txt")
 
     val actions = try {
-      ActionParser.readFile("./planfiles/test2.act")
+      ActionParser.readFile("./planfiles/test3.act")
     } catch {
       case e: RuntimeException =>
         println("cannot parse action file: " + e.getMessage())
         return
     }
     val problem = try {
-      ProblemParser.readFile("./planfiles/test2.prob")
+      ProblemParser.readFile("./planfiles/test3.prob")
     } catch {
       case e: RuntimeException =>
         println("cannot parse problem file: " + e.getMessage())
@@ -27,7 +27,7 @@ object Main {
     //Global.setDebug()
     var plan = Global.initPlan()
     //Global.debug = true
-    val parameter = new SearchParameter(500)
+    val parameter = new SearchParameter(50000)
     val bestfirst = new BestFirstSearch[Plan](List(plan), FlawRepair.refine _, complete _, eval _, parameter)
 
     try {
@@ -81,7 +81,29 @@ object Main {
     {
       if (p.flaws == Nil) 0
       else
-        p.flaws.length + p.steps.length
+      {
+        val past = p.history.map {
+          record => record.oper match
+          {
+            case "insert" => 2
+            case "reuse" => 2
+            case "closed-world" => 2
+            case "promote" => 1
+            case "demote" => 1
+            case "separate" => 1            
+          }
+        }.foldLeft(0)((a, b) => a+b)
+        
+        val future = p.flaws.map
+        {
+          f => f match {
+            case o:OpenCond => 2
+            case t:Threat => 1
+          }          
+        }.foldLeft(0)((a, b) => a+b)
+        
+        past + future
+      }
     }
 
 }
