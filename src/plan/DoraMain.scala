@@ -19,9 +19,12 @@ object DoraMain {
     
     val allActions:List[Action] = (actions ::: otherActions).distinct 
     Global.init(allActions, problem, protoPlan)
+    var plan = Global.initPlan()
+    // insert the analogies
+    val matchings = List[Matching]()
     
-    println(Global.prototype.detailString())
-    println(allActions)
+    //println("prototype: \n" + Global.prototype.detailString())
+    //println("actions: \n" + allActions)
   }
   
   

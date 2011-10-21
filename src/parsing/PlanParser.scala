@@ -55,7 +55,7 @@ object PlanParser extends AbstractPlanParser {
 
       planBinding.unify(new Proposition('temp, template.parameters), new Proposition('temp, realParas), List[Proposition](), List[Proposition]()) match {
         case Some(b) => planBinding = b
-        case None => 
+        case None =>
           {
             println(template.parameters.mkString(" "))
             println(realParas.mkString(" "))
@@ -92,6 +92,25 @@ object PlanParser extends AbstractPlanParser {
           stepCount = stepList.length)
     }
 
+  protected def frameParse: Parser[ProtoFrame] = "(" ~ "name" ~> string ~ ")" ~ "(" ~ "initial-state" ~ rep(prop) ~ ")" ~ "(" ~ "goal-state" ~ rep(prop) ~ ")" ~ "(" ~ "steps" ~
+    rep(step) ~ ")" ~ "(" ~ "links" ~ rep(link) ~ ")" ~ ordering ^^ {
+
+      case name ~ ")" ~ "(" ~ "initial-state" ~ initList ~ ")" ~ "(" ~ "goal-state" ~
+        goalsList ~ ")" ~ "(" ~ "steps" ~ stepList ~ ")" ~ "(" ~ "links" ~ linkList ~ ")" ~
+        newOrder =>
+        // construct a initial step and a goal step
+        val initStep = Action(0, "init-state", List[Variable](), List[Proposition](), List[Proposition](), initList.map(substObj))
+        val goalStep = Action(Global.GOAL_ID, "goal", List[Variable](), List[Proposition](), goalsList.map(substObj), List[Proposition]())
+
+        val newSteps = initStep :: goalStep :: stepList
+
+        new ProtoFrame(name,
+          steps = newSteps,
+          links = linkList,
+          ordering = newOrder,
+          new Binding())
+    }
+
   protected def substObj(termlist: List[TopTerm]): List[TopTerm] =
     {
       termlist map {
@@ -110,11 +129,54 @@ object PlanParser extends AbstractPlanParser {
       new Proposition(p.verb, newlist)
     }
 
-  //  def planOverall:Parser[(List[PopObject], Plan)] = objects ~ planParse ^^ {
-  //    case x ~ y => (x, y)
-  //  }
+  def parseFrame(actionFile: String, problemFile: String, planFile: String): (Problem, List[Action], ProtoFrame) =
+    {
+      actionTemplates = ActionParser.readFile(actionFile)
+      // we need the problem file to read in the class hierarchies
+      val problem = ProblemParser.readFile(problemFile)
+      // should we set subclasses when reading a frame?
+      Global.classes = problem.subclasses
 
-  def parse(actionFile: String, problemFile:String, planFile: String): (List[Action], Plan) =
+      val plantext = scala.io.Source.fromFile(planFile)
+
+      val objlines = plantext.getLine(0)
+
+      val objs = parseAll(objects, objlines).get
+
+      objectHash.clear
+      objectHash ++= objs.map { obj => (obj.name, obj) }
+
+      actionTemplates = actionTemplates map { appendTypesToTemplate }
+
+      println(objectHash)
+
+      val steplines = plantext.mkString
+
+      var frame: ProtoFrame = parseAll(frameParse, steplines).get
+
+      objectHash ++=
+        frame.steps flatMap {
+          _.parameters map {
+            para => (para.fullName, para)
+          }
+        }
+
+      val planlinks = frame.links map {
+        link => new Link(link.id1, link.id2, appendTypesTo(link.effect), appendTypesTo(link.precondition))
+      }
+
+      frame = frame.copy(
+        links = planlinks,
+        binding = planBinding)
+
+      //println(plan.links.map(_.toFileString()).mkString("\n"))
+      //println(frame.links(2).effect)
+      //println(frame.links(2).precondition)
+      //println(frame.detailString())
+      (problem, actionTemplates, frame)
+    }
+
+  def parse(actionFile: String, problemFile: String, planFile: String): (List[Action], Plan) =
     {
       actionTemplates = ActionParser.readFile(actionFile)
       // we need the problem file to read in the class hierarchies
@@ -165,25 +227,18 @@ object PlanParser extends AbstractPlanParser {
     //    val objs = parseAll(objects, lines).get
     //    println(objs)
 
-    val lines = """?p-e1-1"""
+//    val lines = """?p-e1-1"""
+//
+//    def vari: Parser[Variable] = """\?[\+\w-]+-[0-9]+""".r ^^ {
+//      x =>
+//        val index = x.lastIndexOf("-")
+//        val name = x.substring(0, index)
+//        val number = x.substring(index + 1).toInt
+//        Variable(name, "Any", number)
+//    }
 
-    def vari: Parser[Variable] = """\?[\+\w-]+-[0-9]+""".r ^^ {
-      x =>
-        val index = x.lastIndexOf("-")
-        val name = x.substring(0, index)
-        val number = x.substring(index + 1).toInt
-        Variable(name, "Any", number)
-    }
-    //    def init: Parser[Any] = rep(link)
-    //    val objs = parseAll(vari, lines).get
-    //    def init: Parser[List[Link]] = rep(link)
-    //    val objs = parseAll(init, lines).get
-    //    println(objs)
-    //    println(objs.name)
-    //    println(objs.pType)
-    //    println(objs.number)
-    //println(objs.isInstanceOf[TopTerm])
 
-    parse("./planfiles/test2.act", "./planfiles/plantext.txt")
+    val frame = parseFrame("./planfiles/toyphone.act", "./planfiles/toyphone.prob", "./planfiles/toyphone.plan")
+    println(frame._3.planString)
   }
 }

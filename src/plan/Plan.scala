@@ -2,10 +2,38 @@ package plan
 import variable._
 
 class PlanLike(
-  val steps: List[Action],
-  val links: List[Link],
-  val ordering: Ordering,
-  val binding: Binding)
+    val steps: List[Action],
+    val links: List[Link],
+    val ordering: Ordering,
+    val binding: Binding) {
+}
+
+case class ProtoFrame(
+    val name: String,
+    override val steps: List[Action],
+    override val links: List[Link],
+    override val ordering: Ordering,
+    override val binding: Binding) extends PlanLike(steps, links, ordering, binding) {
+
+  override def toString(): String = "<Frame of " + name + " #steps=" + steps.length + ">"
+
+  def planString(): String =
+    {
+      // a plan without steps
+      if (steps.length <= 2) return "Frame of " + name + " with 0 steps"
+
+      var desc = "<Frame of " + name + ">\n"
+
+      val order = ordering.topsort()
+      for (i <- order if i != 0 && i != Global.GOAL_ID) {
+        steps.find(_.id == i) match {
+          case Some(x) => desc += "[" + i + "] " + binding.substVarsString(x) + "\n"
+          case _ => ""
+        }
+      }
+      desc
+    }
+}
 
 case class Plan(
     val id: Int,
