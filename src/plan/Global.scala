@@ -1,5 +1,6 @@
 package plan
 import variable._
+import analogy._
 
 class Problem(
   val init: List[Proposition],

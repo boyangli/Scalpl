@@ -1,6 +1,8 @@
 package plan
 import variable._
 import logging._
+import analogy._
+
 object DoraFlawRepair extends Logging {
 
   def refine(p: Plan): List[Plan] =
@@ -50,7 +52,11 @@ object DoraFlawRepair extends Logging {
 
   def projectAction(p: Plan, open: OpenCond): List[Plan] =
     {
-
+		  // establish matching
+    val protoAction = findProjectee(Global.prototype, p, open)
+    // make or find the action after projection
+    val projectedAction = projectAction(protoAction)
+    // insert the action into the plan
       List()
     }
 
@@ -59,5 +65,36 @@ object DoraFlawRepair extends Logging {
 
       List()
     }
+  
+  def findProjectee(prototype:Plan, gadget:Plan, open:OpenCond):List[(Action, Proposition, Double)] =
+  {
+    if (open.id == Global.GOAL_ID)
+    {
+      // look for incoming links into the goal state of the prototype plan
+      val goalLinks = prototype.links.filter(link => link.id2 == Global.GOAL_ID)
+      // compute the analogy values
+      val analogyValues = goalLinks.map{link => AnalogyEngine.evalAnalogy(link.precondition, open.condition)}
+      // filter out the bad analogies
+      val candidates = goalLinks zip analogyValues filter { x => x._2 > AnalogyEngine.goodThreshold}
+      // convert the links to actions which extend the link
+      candidates map {x => (prototype.id2step(x._1.id1).get, x._1.effect, x._2)}
+    }
+    else
+    {
+      // look for any correspondence between the action with the open precond
+      // and action in the prototype frame
+      val gadgetAction = gadget.id2step(open.id) 
+        
+      val actions = gadget.matchings.filter{_ match {
+        case am:ActionMatching => am.gadget == gadgetAction
+        case _ => false
+      }}.map {
+        _.asInstanceOf[ActionMatching].prototype
+      }
+      
+      actions map {m => 
+      
+
+  }
 
 }

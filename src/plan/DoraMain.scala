@@ -1,5 +1,6 @@
 package plan
 import parsing._
+import analogy._
 
 object DoraMain {
 
