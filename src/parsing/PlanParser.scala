@@ -57,8 +57,8 @@ object PlanParser extends AbstractPlanParser {
         case Some(b) => planBinding = b
         case None =>
           {
-            println(template.parameters.mkString(" "))
-            println(realParas.mkString(" "))
+            //println(template.parameters.mkString(" "))
+            //println(realParas.mkString(" "))
             throw new PopParsingException("Cannot bind corresponding action parameters: " + terms.mkString(" "))
           }
       }
@@ -148,7 +148,7 @@ object PlanParser extends AbstractPlanParser {
 
       actionTemplates = actionTemplates map { appendTypesToTemplate }
 
-      println(objectHash)
+      //println(objectHash)
 
       val steplines = plantext.mkString
 
@@ -216,9 +216,9 @@ object PlanParser extends AbstractPlanParser {
         binding = planBinding)
 
       //println(plan.links.map(_.toFileString()).mkString("\n"))
-      println(plan.links(2).effect)
-      println(plan.links(2).precondition)
-      println(plan.detailString())
+//      println(plan.links(2).effect)
+//      println(plan.links(2).precondition)
+//      println(plan.detailString())
       (actionTemplates, plan)
     }
 

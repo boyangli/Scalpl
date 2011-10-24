@@ -55,9 +55,11 @@ object DoraFlawRepair extends Logging {
       // establish matching
       val protoActions = findProjectee(Global.prototype, p, open)
       // make or find the action after projection
-      val projectedAction = protoActions map { x => projectAction(p, open, x._1, x._2, x._3) }
+      debug { "projected action = " + protoActions }
+
+      val projectedAction = protoActions flatMap { x => projectAction(p, open, x._1, x._2, x._3) }
       // insert the action into the plan
-      List()
+      projectedAction
     }
 
   def transformExistingAction(p: Plan, open: OpenCond): List[Plan] =
@@ -80,82 +82,91 @@ object DoraFlawRepair extends Logging {
       var kids = List[Plan]()
       val init = plan.initialState
       val highStep = plan.stepCount + 1
-      Global.actionTemplates filter
+      val temp = Global.actionTemplates map
         {
           // this line ensures the inserted action has minimal resemblance to the action projected
-          template => AnalogyEngine.evalAnalogy(template, action) > AnalogyEngine.goodThreshold
-        } foreach {
-          template =>
-
-            val analogicalFitness = AnalogyEngine.evalAnalogy(template, action)
-            // instantiate this template
-            val newStep = template.instantiate(highStep)
-            val neqs = newStep.constraints filter { _.verb == 'neq }
-            val neqbind = plan.binding.addNeqs(neqs)
-            newStep.effects foreach {
-              effect =>
-                if (neqbind.canUnify(effect, open.condition)) // filtering obviously impossible effects
-                {
-                  // must respect constraints from both steps
-                  val allConstraints = ((plan.id2step(open.id) map (_.constraints) getOrElse (Nil)) ::: (newStep.constraints)) filterNot (_.verb == 'neq)
-
-                  debug("trying inserting step " + newStep + " with effect: " + effect + " for " + open.condition)
-                  neqbind.directUnify(effect, open.condition, allConstraints, init) match {
-                    case Some(newbind: Binding) =>
-                      debug("unification succeeds")
-                      var newordering =
-                        if (open.id == Global.GOAL_ID)
-                          Set(((highStep, open.id)), ((0, highStep)))
-                        else Set(((highStep, open.id)), ((0, highStep)), (highStep, Global.GOAL_ID))
-
-                      val newLink = new Link(highStep, open.id, effect, open.condition)
-
-                      val reasonString = "Analogically projected action " + action +
-                        " to step " + highStep + " to establish " + open.condition
-
-                      val kid = plan.copy(
-                        id = Global.newPlanID(),
-                        steps = newStep :: plan.steps,
-                        links = newLink :: plan.links,
-                        binding = newbind,
-                        flaws = newStep.preconditions.map { p => new OpenCond(highStep, p) } ::: (plan.flaws - open),
-                        ordering = new Ordering(newordering ++ plan.ordering.list),
-                        reason = reasonString,
-                        history = new Record("AnaReplace", highStep, reasonString, analogicalFitness) :: plan.history,
-                        parent = plan,
-                        stepCount = highStep)
-
-                      //kid.stepCount += 1
-
-                      val threats = FlawRepair.detectThreats(newStep, kid) ::: FlawRepair.detectThreats(newLink, kid)
-
-                      if (threats != Nil) // add detected threats into the plan
-                        kids = kid.copy(flaws = threats ::: kid.flaws) :: kids
-                      else kids = kid :: kids
-
-                    case None => debug("unification failed")
-                  }
-                }
-            }
+          template => (template, AnalogyEngine.evalAnalogy(template, action))
         }
+
+      debug { temp.mkString("remaining: ", ", ", "") }
+
+      temp filter { _._2 > AnalogyEngine.goodThreshold } foreach {
+        x =>
+          val template = x._1
+          val analogicalFitness = x._2
+          // instantiate this template
+          val newStep = template.instantiate(highStep)
+          debug { "attempting " + newStep + " " + open }
+          val neqs = newStep.constraints filter { _.verb == 'neq }
+          val neqbind = plan.binding.addNeqs(neqs)
+          newStep.effects foreach {
+            effect =>
+              if (neqbind.canUnify(effect, open.condition)) // filtering obviously impossible effects
+              {
+                // must respect constraints from both steps
+                val allConstraints = ((plan.id2step(open.id) map (_.constraints) getOrElse (Nil)) ::: (newStep.constraints)) filterNot (_.verb == 'neq)
+
+                debug("trying inserting step " + newStep + " with effect: " + effect + " for " + open.condition)
+                neqbind.directUnify(effect, open.condition, allConstraints, init) match {
+                  case Some(newbind: Binding) =>
+                    debug("analogical unification succeeds")
+
+                    var newordering =
+                      if (open.id == Global.GOAL_ID)
+                        Set(((highStep, open.id)), ((0, highStep)))
+                      else Set(((highStep, open.id)), ((0, highStep)), (highStep, Global.GOAL_ID))
+
+                    val newLink = new Link(highStep, open.id, effect, open.condition)
+
+                    val reasonString = "Analogically projected action " + action +
+                      " to step " + highStep + " to establish " + open.condition
+
+                    val kid = plan.copy(
+                      id = Global.newPlanID(),
+                      steps = newStep :: plan.steps,
+                      links = newLink :: plan.links,
+                      binding = newbind,
+                      flaws = newStep.preconditions.map { cond => new OpenCond(highStep, cond) } ::: (plan.flaws - open),
+                      ordering = new Ordering(newordering ++ plan.ordering.list),
+                      matchings = new ActionMatching(action, newStep) :: plan.matchings,
+                      reason = reasonString,
+                      history = new Record("AnaReplace", highStep, reasonString, analogicalFitness) :: plan.history,
+                      parent = plan,
+                      stepCount = highStep)
+
+                    //kid.stepCount += 1
+
+                    val threats = FlawRepair.detectThreats(newStep, kid) ::: FlawRepair.detectThreats(newLink, kid)
+
+                    if (threats != Nil) // add detected threats into the plan
+                      kids = kid.copy(flaws = threats ::: kid.flaws) :: kids
+                    else kids = kid :: kids
+                  case None => debug("unification failed")
+                }
+              }
+          }
+      }
       kids
     }
 
   protected def analogicallyTransform(plan: Plan, action: Action, effect: Proposition, open: OpenCond, fitness: Double): List[Plan] =
     {
+      
       var kids = List[Plan]()
       val init = plan.initialState
       val highStep = plan.stepCount + 1
 
       val newStep = action.instantiate(highStep)
+      val newEffect = effect.instantiate(highStep)
+      debug { "transforming " + newStep }
       val neqs = newStep.constraints filter { _.verb == 'neq }
       val neqbind = plan.binding.addNeqs(neqs)
 
       // must respect constraints from both steps
       val allConstraints = ((plan.id2step(open.id) map (_.constraints) getOrElse (Nil)) ::: (newStep.constraints)) filterNot (_.verb == 'neq)
 
-      debug("trying inserting step " + newStep + " with effect: " + effect + " for " + open.condition)
-      neqbind.analogicallyUnify(effect, open.condition, allConstraints, init) match {
+      debug("trying inserting step " + newStep + " with effect: " + newEffect + " for " + open.condition)
+      neqbind.analogicallyUnify(newEffect, open.condition, allConstraints, init) match {
         case Some(newbind: Binding) =>
           debug("unification succeeds")
           var newordering =
@@ -163,7 +174,7 @@ object DoraFlawRepair extends Logging {
               Set(((highStep, open.id)), ((0, highStep)))
             else Set(((highStep, open.id)), ((0, highStep)), (highStep, Global.GOAL_ID))
 
-          val newLink = new Link(highStep, open.id, effect, open.condition)
+          val newLink = new Link(highStep, open.id, newEffect, open.condition)
 
           val reasonString = "Analogically transformed action " + highStep + " to establish " + open.condition
           var kid = plan.copy(
@@ -198,6 +209,9 @@ object DoraFlawRepair extends Logging {
       val realCondition = gadget.binding.substVars(open.condition)
 
       if (open.id == Global.GOAL_ID) {
+        debug {
+          "projecting for a goal condition"
+        }
         // look for incoming links into the goal state of the prototype plan
         val goalLinks = prototype.links.filter(link => link.id2 == Global.GOAL_ID)
         // compute the analogy values
@@ -213,8 +227,19 @@ object DoraFlawRepair extends Logging {
       } else {
         // look for any correspondence between the action with the open precond
         // and action in the prototype frame
-        val gadgetAction = gadget.id2step(open.id)
-
+        debug {
+          "projecting for a non-goal condition"
+        }
+        val gadgetAction = gadget.id2step(open.id).get
+        debug {
+          var a = gadget.matchings.mkString(", ")
+          a += "\n" + gadgetAction.toString
+          gadget.matchings.foreach { x =>
+            if (x.isInstanceOf[ActionMatching])
+              a += "\n" + x.asInstanceOf[ActionMatching].gadget == gadgetAction
+          }
+          a
+        }
         val actions = gadget.matchings.filter {
           _ match {
             // find the correspondence to the gadget action we care about
@@ -226,22 +251,24 @@ object DoraFlawRepair extends Logging {
           _.asInstanceOf[ActionMatching].prototype
         }
 
-        // now find the effect of that action that corresponds to the current open precondition
+        // now find the incoming links of that action that corresponds to the current open precondition
 
         actions map { action =>
+          val incomingLinks = prototype.links.filter(_.id2 == action.id)
           // use the first effect as the worst situation
-          var bestEffect: Proposition = action.effects(0)
-          var best: Double = AnalogyEngine.evalAnalogy(prototype.binding.substVars(bestEffect), realCondition)
+          var bestLink: Link = incomingLinks(0)
+          var best: Double = AnalogyEngine.evalAnalogy(prototype.binding.substVars(bestLink.precondition), realCondition)
 
-          action.effects.tail foreach { effect =>
-            val realEffect = prototype.binding.substVars(effect)
+          incomingLinks.tail foreach { link =>
+            val realEffect = prototype.binding.substVars(link.precondition)
             val fitness = AnalogyEngine.evalAnalogy(realEffect, realCondition)
             if (best < fitness) {
               best = fitness
-              bestEffect = effect
+              bestLink = link
             }
           }
-          (action, bestEffect, best)
+          
+          (prototype.id2step(bestLink.id1).get, bestLink.precondition, best)
         }
 
         // other actions that have analogous effects

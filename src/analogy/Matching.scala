@@ -11,9 +11,9 @@ case class Assignment (val argument:PopObject, val value:PopObject) extends Matc
   def isValid():Boolean = argument.pType == value.pType
 }
 
-case class Analogy (val prototype:PopObject, val gadget:PopObject) extends Matching (prototype, gadget)
+case class Analogy (override val prototype:PopObject, override val gadget:PopObject) extends Matching (prototype, gadget)
 
-case class ActionMatching (val prototype:Action, val gadget:Action) extends Matching (prototype, gadget) {
+case class ActionMatching (override val prototype:Action, override val gadget:Action) extends Matching (prototype, gadget) {
 }
 
 case class PropMatching (val protoProp:Proposition, val gadgetProp:Proposition) extends Matching (protoProp, gadgetProp) {

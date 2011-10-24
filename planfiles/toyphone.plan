@@ -1,5 +1,4 @@
 (objects voice:Voice adam:Person cup2:PhoneCup bob:Person toy-phone:ToyPhone cup1:PhoneCup)
-(name toyphone)
 (initial-state part-of(cup1 toy-phone) part-of(cup2 toy-phone) near(adam cup1) near(bob cup2) near(adam toy-phone) near(bob toy-phone) knows(adam voice))
 (goal-state heard(bob voice))
 (steps 

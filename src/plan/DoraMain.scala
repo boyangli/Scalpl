@@ -20,12 +20,22 @@ object DoraMain {
     
     val allActions:List[Action] = (actions ::: otherActions).distinct 
     Global.init(allActions, problem, protoPlan)
+    Global.setDebug()
     var plan = Global.initPlan()
     // insert the analogies
     val matchings = List[Matching]()
     
     //println("prototype: \n" + Global.prototype.detailString())
     //println("actions: \n" + allActions)
+    //println("plans: \n" + plan.initialState() + "\n" + plan.goalState() + "\n " + plan.flaws)
+    
+    plan = DoraFlawRepair.refine(plan)(0)
+    
+    DoraFlawRepair.refine(plan) foreach {
+      p => println(p.detailString())
+      println(p.binding)
+    }
+    
   }
   
   
