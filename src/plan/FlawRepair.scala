@@ -127,7 +127,7 @@ object FlawRepair extends Logging {
                       else Set(((highStep, open.id)), ((0, highStep)), (highStep, Global.GOAL_ID))
 
                     val newLink = new Link(highStep, open.id, effect, open.condition)
-                    
+
                     val reasonString = "Inserted action " + highStep + " to establish " + open.condition
                     val kid = p.copy(
                       id = Global.newPlanID(),
@@ -157,6 +157,8 @@ object FlawRepair extends Logging {
 
       kids
     }
+
+ 
 
   def verifyThreat(threat: Threat, p: Plan): Boolean =
     {
@@ -298,7 +300,7 @@ object FlawRepair extends Logging {
       val promoted = threat.id
       val top = threat.threatened.id1
       if (p.ordering.possiblyBefore(top).contains(promoted)) {
-        debug { "promoted step " + promoted + " before " + top }      
+        debug { "promoted step " + promoted + " before " + top }
         val reasonString = "promoting step " + promoted + " before " + top
         new Some(p.copy(
           id = Global.newPlanID(),
@@ -318,7 +320,7 @@ object FlawRepair extends Logging {
       if (p.ordering.possiblyAfter(bottom).contains(demoted)) {
         debug { "demoted step " + demoted + " before " + bottom }
         val reasonString = "demoting step " + demoted + " after " + bottom
-        new Some(p.copy(      
+        new Some(p.copy(
           id = Global.newPlanID(),
           ordering = p.ordering + ((bottom, demoted)),
           binding = bind,

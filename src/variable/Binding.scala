@@ -170,6 +170,33 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
       Some(answer.toList)
     }
 
+  private def looseMatchTokens(p1: Proposition, p2: Proposition): Option[List[(Token, Token)]] =
+    {
+      // step 0: filter verbs and length
+      if (p1.verb != p2.verb || p1.length != p2.length) return None
+      // match tokens into pairs
+      var answer = new ListBuffer[(Token, Token)]()
+
+      (p1.termlist, p2.termlist).zipped.foreach((_, _) match {
+        case (t1: Token, t2: Token) => {
+          // check types of the tokens before matching them
+          // in the loose match, it is ok if the ptypes do not match as long as none of them is person
+          if ((t1.pType != "Person" && t2.pType != "Person") || typeCompatible(t1.pType, t2.pType))
+            answer += ((t1, t2))
+          else return None
+        }
+        case (p1: Proposition, p2: Proposition) =>
+          matchTokens(p1, p2) match {
+            case Some(l: List[(Token, Token)]) =>
+              l.foreach { answer += _ } // recursive 
+            case None => return None
+          }
+        case _ => return None
+      })
+
+      Some(answer.toList)
+    }
+
   private def revealTokenValues(list: List[(Token, Token)]): List[(Token, Token)] =
     {
       list.map(elem =>
@@ -370,6 +397,19 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
         val subclass2 = topology.getOrElse(type2, Set())
         (subclass1 contains type2) || (subclass2 contains type1)
       }
+    }
+
+  def analogicallyUnify(p1: Proposition, p2: Proposition, constraints: List[Proposition],
+                        initial: List[Proposition]): Option[Binding] =
+    {
+      // step 1: match tokens pairwise
+      val matched = looseMatchTokens(p1, p2)
+      if (matched isEmpty) return None // fail to match the two propositions
+      // step 2: retrieve known values for variables that are already bound
+      val valued = revealTokenValues(matched.get)
+      // step 3: check for superficial inconsistencies. If there is, return None
+      if (!isPairConsistent(valued)) return None
+      unifyWithConstraints(valued, constraints, initial)
     }
 }
 
