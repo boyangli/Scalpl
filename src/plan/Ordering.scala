@@ -117,7 +117,7 @@ class Ordering(val list: Set[(Int, Int)]) {
       //println("list=" + list)
       var head = list.head
       var tail = list.toList
-      var rest = tail
+      var rest = tail.tail
       //println("rest :" + rest)
       while (tail != Nil) {
         tail = tail.tail
