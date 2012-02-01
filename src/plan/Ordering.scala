@@ -1,4 +1,5 @@
 package plan
+import variable._
 
 class Ordering(val list: Set[(Int, Int)]) {
 
@@ -116,7 +117,7 @@ class Ordering(val list: Set[(Int, Int)]) {
       //println("list=" + list)
       var head = list.head
       var tail = list.toList
-      var rest = tail
+      var rest = tail.tail
       //println("rest :" + rest)
       while (tail != Nil) {
         tail = tail.tail
@@ -131,7 +132,7 @@ class Ordering(val list: Set[(Int, Int)]) {
           // head is necesssary
           //println("needed")
           store += head
-          rest = head :: rest         
+          rest = head :: rest
         }
         if (tail != Nil) {
           head = tail.head
@@ -148,6 +149,14 @@ class Ordering(val list: Set[(Int, Int)]) {
         if (pair._2 == Global.GOAL_ID) (pair._1.toString, "goal")
         else pair
       } mkString (", ")
+    }
+
+  def toFileString(): String =
+    {
+      list map { pair =>
+        if (pair._2 == Global.GOAL_ID) (pair._1.toString, "goal")
+        else pair
+      } mkString (" ")
     }
 
   //def allNodes()
