@@ -10,14 +10,14 @@ object Main {
     //    val problem = ProblemParser.readFile("./planfiles/problem.txt")
 
     val actions = try {
-      ActionParser.readFile("./planfiles/test3.act")
+      ActionParser.readFile("./planfiles/test2.act")
     } catch {
       case e: RuntimeException =>
         println("cannot parse action file: " + e.getMessage())
         return
     }
     val problem = try {
-      ProblemParser.readFile("./planfiles/test3.prob")
+      ProblemParser.readFile("./planfiles/test2.prob")
     } catch {
       case e: RuntimeException =>
         println("cannot parse problem file: " + e.getMessage())
@@ -90,7 +90,7 @@ object Main {
             case "closed-world" => 2
             case "promote" => 1
             case "demote" => 1
-            case "separate" => 1            
+            case "separate" => 1 // this could be higher - Steve Urban           
           }
         }.foldLeft(0)((a, b) => a+b)
         

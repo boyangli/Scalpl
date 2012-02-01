@@ -57,7 +57,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
     }
 
   /**
-   * superficially tests for unification
+   * superficially tests for unification. This is a fast, early test for failure
    *
    */
   def canUnify(p1: Proposition, p2: Proposition): Boolean =
