@@ -1,0 +1,15 @@
+(problem
+(init 
+	(has jack:Person money:Object)
+	(at tom:Person home:Location)
+	(at jack:Person home:Location)
+)
+(goal
+	(has tom money)
+	(dead jack)
+)
+
+(classes
+
+)
+)

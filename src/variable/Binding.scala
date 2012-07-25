@@ -3,7 +3,9 @@ package variable
 import scala.collection.mutable.HashMap
 import logging._
 import scala.collection.mutable.ListBuffer
-import plan._
+import planning._
+import structures._
+import action._
 
 /**
  * A Binding object is a layer added on a hash map, which indexes the VarSet objects with the PopObject or Variable.
@@ -52,10 +54,10 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
    * and 2) respects the given constraints.
    *
    */
-  def unify(p1: Proposition, p2: Proposition, constraints: List[Proposition], initial: List[Proposition]): Option[Binding] =
+  def unify(p1: Proposition, p2: Proposition, constraints: List[Proposition], initial: List[Proposition], g:GlobalInfo): Option[Binding] =
     {
       // step 1: match tokens pairwise
-      val matched = matchTokens(p1, p2)
+      val matched = matchTokens(p1, p2, g)
       if (matched isEmpty) return None // fail to match the two propositions
       // step 2: retrieve known values for variables that are already bound
       val valued = revealTokenValues(matched.get)
@@ -69,10 +71,10 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
    * superficially tests for unification without checking for constraints
    *
    */
-  def canUnify(p1: Proposition, p2: Proposition): Boolean =
+  def canUnify(p1: Proposition, p2: Proposition, g:GlobalInfo): Boolean =
     {
       // step 1: match tokens pairwise
-      val matched = matchTokens(p1, p2)
+      val matched = matchTokens(p1, p2, g)
       if (matched isEmpty) return false // fail to match the two propositions
       // step 2: retrieve known values for variables that are already bound
       val valued = revealTokenValues(matched.get)
@@ -86,10 +88,10 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
    * still tests for consistency with constraints
    *
    */
-  def directUnify(p1: Proposition, p2: Proposition, constraints: List[Proposition], initial: List[Proposition]): Option[Binding] =
+  def directUnify(p1: Proposition, p2: Proposition, constraints: List[Proposition], initial: List[Proposition], g:GlobalInfo): Option[Binding] =
     {
       // step 1: match tokens pairwise
-      val matched = matchTokens(p1, p2)
+      val matched = matchTokens(p1, p2, g)
       val valued = revealTokenValues(matched.get)
       unifyWithConstraints(valued, constraints, initial)
     }
@@ -125,12 +127,12 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
    * and 2) respects the given constraints.
    *
    */
-  def separate(p1: Proposition, p2: Proposition): List[Binding] =
+  def separate(p1: Proposition, p2: Proposition, g:GlobalInfo): List[Binding] =
     {
       // step 0: if they are already the same, no separation is possible and return Nil
       if (substVars(p1) == substVars(p2)) return Nil
       // step 1: match tokens pairwise
-      val matched = matchTokens(p1, p2)
+      val matched = matchTokens(p1, p2, g)
       if (matched isEmpty) return List(this) // the two propositions are just different, no further operations necessary
       // step 2: retrieve known values for variables that are already bound
       val valued = revealTokenValues(matched.get)
@@ -144,7 +146,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
    * match tokens in two propositions into a list of pairs. If it returns None,
    * matching has failed due to their inherent differences
    */
-  private def matchTokens(p1: Proposition, p2: Proposition): Option[List[(Token, Token)]] =
+  private def matchTokens(p1: Proposition, p2: Proposition, g:GlobalInfo): Option[List[(Token, Token)]] =
     {
       // step 0: filter verbs and length
       if (p1.verb != p2.verb || p1.length != p2.length) return None
@@ -154,12 +156,12 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
       (p1.termlist, p2.termlist).zipped.foreach((_, _) match {
         case (t1: Token, t2: Token) => {
           // check types of the tokens before matching them
-          if (typeCompatible(t1.pType, t2.pType))
+          if (typeCompatible(t1.pType, t2.pType, g))
             answer += ((t1, t2))
           else return None
         }
         case (p1: Proposition, p2: Proposition) =>
-          matchTokens(p1, p2) match {
+          matchTokens(p1, p2, g) match {
             case Some(l: List[(Token, Token)]) =>
               l.foreach { answer += _ } // recursive 
             case None => return None
@@ -170,7 +172,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
       Some(answer.toList)
     }
 
-  private def looseMatchTokens(p1: Proposition, p2: Proposition): Option[List[(Token, Token)]] =
+  private def looseMatchTokens(p1: Proposition, p2: Proposition, g:GlobalInfo): Option[List[(Token, Token)]] =
     {
       // step 0: filter verbs and length
       if (p1.verb != p2.verb || p1.length != p2.length) return None
@@ -181,12 +183,12 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
         case (t1: Token, t2: Token) => {
           // check types of the tokens before matching them
           // in the loose match, it is ok if the ptypes do not match as long as none of them is person
-          if ((t1.pType != "Person" && t2.pType != "Person") || typeCompatible(t1.pType, t2.pType))
+          if ((t1.pType != "Person" && t2.pType != "Person") || typeCompatible(t1.pType, t2.pType, g))
             answer += ((t1, t2))
           else return None
         }
         case (p1: Proposition, p2: Proposition) =>
-          matchTokens(p1, p2) match {
+          matchTokens(p1, p2, g) match {
             case Some(l: List[(Token, Token)]) =>
               l.foreach { answer += _ } // recursive 
             case None => return None
@@ -366,6 +368,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
       "(" + a.name + a.parameters.map { x => getBoundedSymbol(x).getOrElse(x).toShortString }.mkString(" ", " ", ")")
     }
 
+  /*
   def substVars(p: Proposition, va: Variable, sa: PopObject): Proposition =
     {
       Proposition(p.verb, p.termlist.map(_ match {
@@ -377,6 +380,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
         case other => other
       }))
     }
+    */
 
   /**
    * tests if two propositions may be equal after considering current bound variables in them
@@ -385,11 +389,11 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
   def canEqual(p1: Proposition, p2: Proposition) =
     substVars(p1) equalsIgnoreVars substVars(p2)
 
-  def typeCompatible(type1: String, type2: String): Boolean =
+  def typeCompatible(type1: String, type2: String, g:GlobalInfo): Boolean =
     {
       if (type1 == type2) return true
       else {
-        val topology = Global.classes
+        val topology = g.classes
         if (topology == null) return false
 
         // subclass1 and 2 are sets of subclasses of their types
@@ -400,10 +404,10 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
     }
 
   def analogicallyUnify(p1: Proposition, p2: Proposition, constraints: List[Proposition],
-                        initial: List[Proposition]): Option[Binding] =
+                        initial: List[Proposition], g:GadgetGlobal): Option[Binding] =
     {
       // step 1: match tokens pairwise
-      val matched = looseMatchTokens(p1, p2)
+      val matched = looseMatchTokens(p1, p2, g)
       if (matched isEmpty) return None // fail to match the two propositions
       // step 2: retrieve known values for variables that are already bound
       val valued = revealTokenValues(matched.get)

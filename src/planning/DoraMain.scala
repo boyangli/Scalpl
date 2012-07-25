@@ -1,7 +1,12 @@
-package plan
+package planning
 import parsing._
+import structures._
 import analogy._
+import action._
 
+/* fix at a later time
+ * 
+ 
 object DoraMain {
 
   def main(args:Array[String])
@@ -19,9 +24,9 @@ object DoraMain {
     val (problem, otherActions) = TotalParser.parse("./planfiles/fluphone.prob", "./planfiles/fluphone.act")
     
     val allActions:List[Action] = (actions ::: otherActions).distinct 
-    Global.init(allActions, problem, protoPlan)
-    Global.setDebug()
-    var plan = Global.initPlan()
+    GlobalInfo.init(allActions, problem, protoPlan)
+    GlobalInfo.setDebug()
+    var plan = GlobalInfo.initPlan()
     // insert the analogies
     val matchings = List[Matching]()
     
@@ -37,6 +42,5 @@ object DoraMain {
     }
     
   }
-  
-  
-}
+ } 
+  */

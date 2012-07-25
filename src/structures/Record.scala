@@ -1,4 +1,4 @@
-package plan
+package structures
 
 class Record (val oper:String, val stepid:Int, val reason:String, val value:Double) {
 

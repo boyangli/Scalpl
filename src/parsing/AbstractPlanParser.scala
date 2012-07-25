@@ -1,8 +1,10 @@
 package parsing
 import scala.collection.mutable.HashMap
 
+import action._
 import variable._
-import plan._
+import planning._
+import structures._
 
 abstract class AbstractPlanParser extends PopParser {
   var objectHash = HashMap[String, Token]()
@@ -78,9 +80,9 @@ abstract class AbstractPlanParser extends PopParser {
       action.parameters foreach { v =>
         if (actionHash.get(v.name).isDefined) throw new PopParsingException("name conflicts: " + v.name + " is repeated.")
         else
-          actionHash += (v.name -> v) 
-          // note here we use the name field, not the full name field. 
-          // As the templates are not instantiated, the two fields are actually identical
+          actionHash += (v.name -> v)
+        // note here we use the name field, not the full name field. 
+        // As the templates are not instantiated, the two fields are actually identical
       }
 
       val newConstraints = action.constraints map { appendTypesTo(_, actionHash) }
@@ -92,7 +94,12 @@ abstract class AbstractPlanParser extends PopParser {
         case o: PopObject => if (o != PopObject.unknown && o.pType == "Any") getOrError(o, o.name, actionHash) else o
       }
 
-      Action(action.name, actor, action.parameters, newConstraints, newPreconds, newEffects)
+      action match {
+        case dact: DecompAction =>
+          DecompAction(action.name, actor, action.parameters, newConstraints, newPreconds, newEffects, dact.composite)
+        case _ =>
+          Action(action.name, actor, action.parameters, newConstraints, newPreconds, newEffects)
+      }
     }
 
   def getOrError(token: Token, name: String, hash: HashMap[String, Token]): Token =

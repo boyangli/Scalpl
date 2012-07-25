@@ -1,4 +1,4 @@
-package plan
+package planning
 
 /** not needed so far
  * 

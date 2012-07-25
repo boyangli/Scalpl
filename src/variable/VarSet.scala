@@ -3,7 +3,9 @@ package variable
 import scala.collection.mutable.HashMap
 import scala.collection.mutable.ListBuffer
 
-import plan._
+import planning._
+import structures._
+
 
 class VarSet(val equals: List[Token], val nonEquals: List[Token], val groundObj: PopObject) {
 
@@ -207,12 +209,13 @@ object VarSet_Test {
   //    }
   //  }
   def main(args: Array[String]) {
+    val g = new GlobalInfo(Nil, null)
 	  val p1 = Proposition.parse("(kick jack tom ?p2 ?p3)")
 	  val p2 = Proposition.parse("(kick jack ?p4 jill ?p6)")
 	  var bind = new Binding()
 	  //bind += VarSet(Variable("?p4"), 'tom)
 	  //bind += VarSet(Variable("?p2"), 'adam)
-	  val list = bind.separate(p1, p2)
+	  val list = bind.separate(p1, p2, g)
 //	  val b = list(0)
 //	  println(b.hashes.keySet)
 	  println(list.mkString("\n\n"))

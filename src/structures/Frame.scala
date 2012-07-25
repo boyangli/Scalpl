@@ -1,6 +1,6 @@
-package plan
+package structures
 import variable._
-
+import action._
 
 case class Frame(
   val name: String,

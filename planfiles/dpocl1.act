@@ -1,0 +1,22 @@
+(action move (?p1:Person ?place1:Location ?place2:Location)
+	(actor ?p1)
+	(constraints (neq ?place1 ?place2))
+	(preconditions (not (at ?p1 ?place2)) (at ?p1 ?place1))
+	(effects (not (at ?p1 ?place1)) (at ?p1 ?place2))
+	)
+
+(action kill (?p1:Person ?p2:Person ?place:Location)
+     (actor ?p1)
+	 (constraints (neq ?p1 ?p2))	 
+	 (preconditions (at ?p1 ?place) (at ?p2 ?place) (not (dead ?p2)))
+	 (effects (dead ?p2)) 
+	 )
+	 
+(composite action murder (?p1:Person ?p2:Person ?place1:Location ?place2:Location)
+	(actor ?p1)
+	(constraints (neq ?p1 ?p2) (neq ?place1 ?place2))
+	(preconditions )
+	(effects (murder-happened))
+	)
+
+	

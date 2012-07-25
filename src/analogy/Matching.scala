@@ -1,6 +1,9 @@
 package analogy
 import variable._
-import plan._
+import action._
+import planning._
+import structures._
+
 
 class Matching (val prototype:Any, val gadget:Any)
 

@@ -1,20 +1,24 @@
-package plan
+package planning
 import variable._
 import logging._
 import analogy._
+import action._
+import structures._
+/* Fix at a later time - Albert 23 July 2012
+ * 
 
 object DoraFlawRepair extends Logging {
 
-  def refine(p: Plan): List[Plan] =
+  def refine(p: Plan, g:GadgetGlobal): List[Plan] =
     {
       val kids =
         selectFlaw(p) match {
           case open: OpenCond =>
             trace("repairing: " + open)
-            repairOpen(p, open)
+            repairOpen(p, open, g)
           case threat: Threat =>
             trace("repairing: " + threat)
-            FlawRepair.repairThreat(p, threat)
+            SimpleRepair.repairThreat(p, threat, g)
           case _ => throw new Exception("A flaw with no known repairs! " + p.flaws)
         }
       p.children = kids
@@ -31,11 +35,12 @@ object DoraFlawRepair extends Logging {
       kids
     }
 
-  def repairOpen(p: Plan, open: OpenCond): List[Plan] =
+
+  def repairOpen(p: Plan, open: OpenCond, g:GadgetGlobal): List[Plan] =
     {
       // no closed world. you have to insert it into the initial state
       insertIntoInitial(p, open) ::: projectAction(p, open) ::: transformExistingAction(p, open) :::
-        FlawRepair.reuseActions(p, open) ::: FlawRepair.insertAction(p, open) // the second line are old methods
+        SimpleRepair.reuseActions(p, open, g) ::: SimpleRepair.insertAction(p, open, g) // the second line are old methods
     }
 
   def selectFlaw(p: Plan): Flaw =
@@ -50,10 +55,10 @@ object DoraFlawRepair extends Logging {
       List()
     }
 
-  def projectAction(p: Plan, open: OpenCond): List[Plan] =
+  def projectAction(p: Plan, open: OpenCond, g:GadgetGlobal): List[Plan] =
     {
       // establish matching
-      val protoActions = findProjectee(Global.prototype, p, open)
+      val protoActions = findProjectee(g.prototype, p, open)
       // make or find the action after projection
       debug { "projected action = " + protoActions }
 
@@ -77,12 +82,12 @@ object DoraFlawRepair extends Logging {
       }
     }
 
-  protected def analogicallyReplace(plan: Plan, action: Action, effect: Proposition, open: OpenCond): List[Plan] =
+  protected def analogicallyReplace(plan: Plan, action: Action, effect: Proposition, open: OpenCond, g:GadgetGlobal): List[Plan] =
     {
       var kids = List[Plan]()
       val init = plan.initialState
       val highStep = plan.stepCount + 1
-      val temp = Global.actionTemplates map
+      val temp = g.actionTemplates map
         {
           // this line ensures the inserted action has minimal resemblance to the action projected
           template => (template, AnalogyEngine.evalAnalogy(template, action))
@@ -112,9 +117,9 @@ object DoraFlawRepair extends Logging {
                     debug("analogical unification succeeds")
 
                     var newordering =
-                      if (open.id == Global.GOAL_ID)
+                      if (open.id == GlobalInfo.GOAL_ID)
                         Set(((highStep, open.id)), ((0, highStep)))
-                      else Set(((highStep, open.id)), ((0, highStep)), (highStep, Global.GOAL_ID))
+                      else Set(((highStep, open.id)), ((0, highStep)), (highStep, GlobalInfo.GOAL_ID))
 
                     val newLink = new Link(highStep, open.id, effect, open.condition)
 
@@ -136,7 +141,7 @@ object DoraFlawRepair extends Logging {
 
                     //kid.stepCount += 1
 
-                    val threats = FlawRepair.detectThreats(newStep, kid) ::: FlawRepair.detectThreats(newLink, kid)
+                    val threats = SimpleRepair.detectThreats(newStep, kid) ::: SimpleRepair.detectThreats(newLink, kid)
 
                     if (threats != Nil) // add detected threats into the plan
                       kids = kid.copy(flaws = threats ::: kid.flaws) :: kids
@@ -149,7 +154,7 @@ object DoraFlawRepair extends Logging {
       kids
     }
 
-  protected def analogicallyTransform(plan: Plan, action: Action, effect: Proposition, open: OpenCond, fitness: Double): List[Plan] =
+  protected def analogicallyTransform(plan: Plan, action: Action, effect: Proposition, open: OpenCond, fitness: Double, g:GadgetGlobal): List[Plan] =
     {
       
       var kids = List[Plan]()
@@ -170,15 +175,15 @@ object DoraFlawRepair extends Logging {
         case Some(newbind: Binding) =>
           debug("unification succeeds")
           var newordering =
-            if (open.id == Global.GOAL_ID)
+            if (open.id == Constants.GOAL_ID)
               Set(((highStep, open.id)), ((0, highStep)))
-            else Set(((highStep, open.id)), ((0, highStep)), (highStep, Global.GOAL_ID))
+            else Set(((highStep, open.id)), ((0, highStep)), (highStep, GlobalInfo.GOAL_ID))
 
           val newLink = new Link(highStep, open.id, newEffect, open.condition)
 
           val reasonString = "Analogically transformed action " + highStep + " to establish " + open.condition
           var kid = plan.copy(
-            id = Global.newPlanID(),
+            id = GadgetGlobal.newPlanID(),
             steps = newStep :: plan.steps,
             links = newLink :: plan.links,
             binding = newbind,
@@ -191,7 +196,7 @@ object DoraFlawRepair extends Logging {
 
           //kid.stepCount += 1
 
-          val threats = FlawRepair.detectThreats(newStep, kid) ::: FlawRepair.detectThreats(newLink, kid)
+          val threats = SimpleRepair.detectThreats(newStep, kid) ::: SimpleRepair.detectThreats(newLink, kid)
 
           if (threats != Nil) // add detected threats into the plan
             List(kid.copy(flaws = threats ::: kid.flaws))
@@ -204,16 +209,16 @@ object DoraFlawRepair extends Logging {
     }
 
   // returns the action, the effect of the action that matches the open precond, and the fitness of the analogy
-  protected def findProjectee(prototype: Plan, gadget: Plan, open: OpenCond): List[(Action, Proposition, Double)] =
+  protected def findProjectee(prototype: Plan, gadget: GadgetPlan, open: OpenCond, g:GadgetGlobal): List[(Action, Proposition, Double)] =
     {
       val realCondition = gadget.binding.substVars(open.condition)
 
-      if (open.id == Global.GOAL_ID) {
+      if (open.id == Constants.GOAL_ID) {
         debug {
           "projecting for a goal condition"
         }
         // look for incoming links into the goal state of the prototype plan
-        val goalLinks = prototype.links.filter(link => link.id2 == Global.GOAL_ID)
+        val goalLinks = prototype.links.filter(link => link.id2 == Constants.GOAL_ID)
         // compute the analogy values
         val analogyValues = goalLinks map { link =>
           AnalogyEngine.evalAnalogy(prototype.binding.substVars(link.precondition),
@@ -280,3 +285,4 @@ object DoraFlawRepair extends Logging {
     }
 
 }
+*/
