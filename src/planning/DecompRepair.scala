@@ -6,7 +6,7 @@ import structures._
 
 /**
  * repair algorithms for decompositional partial order planner (Young & Pollack 1996)
- * TODO: Test these methods
+ * TODO: Test these methods. Add reuse.
  */
 object DecompRepair extends Logging {
 
