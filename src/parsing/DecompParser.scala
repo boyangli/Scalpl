@@ -68,5 +68,5 @@ object TestRecipeReader extends App {
   logging.DebugInfo.setDebug()
   val file = "./planfiles/testDecomp.decomp"
   val (problem, actions, recipes) = TotalParser.decompParse("./planfiles/dpocl1.prob", "./planfiles/dpocl1.act", "./planfiles/dpocl1.decomp")
-  recipes.foreach(r => println(r.toString()))
+  recipes.foreach(r => println(r.toParseString()))
 }

@@ -3,6 +3,7 @@ import variable._
 import analogy._
 import action._
 import planning._
+import parsing.Parsible
 
 class PlanLike(
   val steps: List[Action],
@@ -49,7 +50,7 @@ case class Plan(
   val history: List[Record],
   val parent: Plan,
   var children: List[Plan],
-  val stepCount: Int = 0) extends PlanLike(steps, links, ordering, binding) {
+  val stepCount: Int = 0) extends PlanLike(steps, links, ordering, binding) with Parsible {
 
   override def toString(): String = "<Plan[" + id + "] #steps=" + stepCount + ", #flaws=" + flaws.length + ">"
 
@@ -82,14 +83,16 @@ case class Plan(
       desc
     }
 
+  /*
   def getEmpty(g:GlobalInfo): Plan =
     {
       val id = g.newPlanID()
       new Plan(id, List[Action](), List[Link](), new Ordering(), new Binding(), List[Flaw](), "",
         List[Record](), null, null)
     }
+    */
 
-  def parsibleString(): String =
+  override def toParseString(): String =
     {
       var answer = "(objects " + collectObjects.mkString(" ") + ")\n" // objects
       answer += "(initial-state " + initialState.map(_.toShortString).mkString(" ") + ")\n" // initial state

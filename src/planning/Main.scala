@@ -33,7 +33,7 @@ object Main {
       println("Found plan: " + result)
 //      println(result.planString())
       println(result.detailString())
-      println("parsible:" + result.parsibleString())
+      println("parsible:" + result.toParseString())
 
 
     } catch {

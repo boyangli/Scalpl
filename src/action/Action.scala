@@ -38,18 +38,17 @@ class Action(
   }
 
   def instantiate(number: Int): Action =
-    {
-      new Action(
-        number, name,
-        actor match {
-          case v: Variable => v instantiate number
-          case o: Object => o
-        },
-        parameters.map(_ instantiate number),
-        constraints.map(Action.instanProp(_, number)),
-        preconditions.map(Action.instanProp(_, number)),
-        effects.map(Action.instanProp(_, number)))
-    }
+    new Action(
+      number, name,
+      actor match {
+        case v: Variable => v instantiate number
+        case o: Object => o
+      },
+      parameters.map(_ instantiate number),
+      constraints.map(_ instantiate number),
+      preconditions.map(_ instantiate number),
+      effects.map(_ instantiate number),
+      this.dummy)
 
   override def toString(): String =
     {
@@ -84,7 +83,9 @@ class Action(
       case _ => false
     }
 
-  def canEqual(that: Any) = that.isInstanceOf[Action]
+  override def hashCode() = (name.hashCode * 37 + id.hashCode * 97) % 23
+
+  def canEqual(that: Any) = that.isInstanceOf[Action] && !that.isInstanceOf[DecompAction]
 }
 
 object Action {
@@ -108,17 +109,6 @@ object Action {
     preconditions: List[Proposition], effects: List[Proposition]): Action =
     new Action(-1, name, PopObject.unknown, parameters, constraints, preconditions, effects)
 
-  private def instanProp(prop: Proposition, number: Int): Proposition =
-    {
-      val verb = prop.verb
-      val termlist: List[TopTerm] = prop.termlist.map(_ match {
-        case v: Variable => v.instantiate(number)
-        case s: PopObject => s
-        case p: Proposition => instanProp(p, number)
-        case _ => throw new Exception("weird content in term list")
-      })
-      Proposition(verb, termlist)
-    }
 }
 
 class DecompAction(
@@ -129,7 +119,8 @@ class DecompAction(
   constraints: List[Proposition],
   preconditions: List[Proposition],
   effects: List[Proposition],
-  val composite: Boolean) extends Action(id, name, actor, parameters, constraints, preconditions, effects) {
+  dummy: Boolean,
+  val composite: Boolean) extends Action(id, name, actor, parameters, constraints, preconditions, effects, dummy) {
 
   override def toString(): String =
     "(" +
@@ -141,19 +132,54 @@ class DecompAction(
         else
           ""
       } + ")"
+
+  override def instantiate(number: Int): Action =
+    {
+      new DecompAction(
+        number, name,
+        actor match {
+          case v: Variable => v instantiate number
+          case o: Object => o
+        },
+        parameters.map(_ instantiate number),
+        constraints.map(_ instantiate number),
+        preconditions.map(_ instantiate number),
+        effects.map(_ instantiate number),
+        this.dummy,
+        this.composite)
+    }
+
+  /**
+   * The id of this instantiated action is the variable id
+   * All variables are instantiated with the parent id
+   */
+  def doubleInstantiate(selfId: Int, parentId: Int): DecompAction =
+    new DecompAction(
+      selfId, name,
+      actor match {
+        case v: Variable => v instantiate parentId
+        case o: Object => o
+      },
+      parameters.map(_ instantiate parentId),
+      constraints.map(_ instantiate parentId),
+      preconditions.map(_ instantiate parentId),
+      effects.map(_ instantiate parentId),
+      this.dummy,
+      this.composite)
+
 }
 
 object DecompAction {
 
   def apply(id: Int, name: String, parameters: List[Variable], constraints: List[Proposition],
     preconditions: List[Proposition], effects: List[Proposition], composite: Boolean): DecompAction =
-    new DecompAction(id, name, PopObject.unknown, parameters, constraints, preconditions, effects, composite)
+    new DecompAction(id, name, PopObject.unknown, parameters, constraints, preconditions, effects, composite, false)
 
   def apply(name: String, actor: Token, parameters: List[Variable], constraints: List[Proposition],
     preconditions: List[Proposition], effects: List[Proposition], composite: Boolean): DecompAction =
-    new DecompAction(-1, name, actor, parameters, constraints, preconditions, effects, composite)
+    new DecompAction(-1, name, actor, parameters, constraints, preconditions, effects, composite, false)
 
   def apply(name: String, parameters: List[Variable], constraints: List[Proposition],
     preconditions: List[Proposition], effects: List[Proposition], composite: Boolean): DecompAction =
-    new DecompAction(-1, name, PopObject.unknown, parameters, constraints, preconditions, effects, composite)
+    new DecompAction(-1, name, PopObject.unknown, parameters, constraints, preconditions, effects, composite, false)
 }

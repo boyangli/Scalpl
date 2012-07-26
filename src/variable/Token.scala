@@ -125,7 +125,8 @@ case class Proposition(val verb: Symbol, val termlist: List[TopTerm]) extends To
         _ match {
           case v: Variable => v.instantiate(number)
           case p: Proposition => p.instantiate(number)
-          case x => x
+          case s: PopObject => s
+          case _ => throw new Exception("weird content in term list")
         }
       })
     }
