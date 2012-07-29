@@ -173,13 +173,13 @@ object DecompAction {
 
   def apply(id: Int, name: String, parameters: List[Variable], constraints: List[Proposition],
     preconditions: List[Proposition], effects: List[Proposition], composite: Boolean): DecompAction =
-    new DecompAction(id, name, PopObject.unknown, parameters, constraints, preconditions, effects, composite, false)
+    new DecompAction(id, name, PopObject.unknown, parameters, constraints, preconditions, effects, false, composite)
 
   def apply(name: String, actor: Token, parameters: List[Variable], constraints: List[Proposition],
     preconditions: List[Proposition], effects: List[Proposition], composite: Boolean): DecompAction =
-    new DecompAction(-1, name, actor, parameters, constraints, preconditions, effects, composite, false)
+    new DecompAction(-1, name, actor, parameters, constraints, preconditions, effects, false, composite)
 
   def apply(name: String, parameters: List[Variable], constraints: List[Proposition],
     preconditions: List[Proposition], effects: List[Proposition], composite: Boolean): DecompAction =
-    new DecompAction(-1, name, PopObject.unknown, parameters, constraints, preconditions, effects, composite, false)
+    new DecompAction(-1, name, PopObject.unknown, parameters, constraints, preconditions, effects, false, composite)
 }

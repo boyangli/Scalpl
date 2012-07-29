@@ -73,7 +73,7 @@ object ActionParser extends AbstractActionParser {
 
 object DecompActionParser extends AbstractActionParser {
 
-  def readFile(file: String): List[Action] =
+  def readFile(file: String): List[DecompAction] =
     {
       val lines = scala.io.Source.fromFile(file).mkString
       //println("lines: " + lines)
@@ -126,17 +126,16 @@ object DecompActionParser extends AbstractActionParser {
     "(" ~ "preconditions" ~ rep(prop) ~ closing ~
     "(" ~ "effects" ~ rep(prop) <~ closing ~
     closing ^^
-    {
+    {    
       case name ~ "(" ~ list1 ~ x1 ~ actor ~
         "(" ~ "constraints " ~ list2 ~ x2 ~
         "(" ~ "preconditions" ~ list3 ~ x3 ~
         "(" ~ "effects" ~ list4 =>
-        {
           //          println("0: " + string + " 1: " + list1 + " 2: " + list2 + " 3: " + list3 + " 4 " + list4)
+          
           actor match {
             case Some(act) => DecompAction(name, act, list1, list2, list3, list4, true)
             case None => DecompAction(name, list1, list2, list3, list4, true)
           }
-        }
     }
 }

@@ -11,7 +11,7 @@ import structures._
 
 object TotalParser extends AbstractPlanParser {
 
-  def decompParse(problemFile: String, actionFile: String, recipeFile: String): (Problem, List[Action], List[Recipe]) =
+  def decompParse(problemFile: String, actionFile: String, recipeFile: String): (Problem, List[DecompAction], List[Recipe]) =
     {
       objectHash.clear()
       var problem = ProblemParser.readFile(problemFile)
@@ -27,7 +27,7 @@ object TotalParser extends AbstractPlanParser {
       val goal = problem.goal map { appendTypesTo(_) }
 
       problem = new Problem(init, goal, problem.subclasses)
-      actionList = actionList map { appendTypesToTemplate(_) }
+      actionList = actionList map { appendTypesToTemplate(_).asInstanceOf[DecompAction] }
 
       var rawRecipes = DecompParser.readFile(recipeFile, actionList)
       val recipes = extractRecipes(rawRecipes, actionList.map { _.asInstanceOf[DecompAction] }, problem)

@@ -57,7 +57,7 @@ class GlobalInfo(var actionTemplates: List[Action], problem: Problem) {
   }
 }
 
-class DecompGlobal(actionTemplates: List[Action], problem: Problem, val recipes:List[Recipe]) extends GlobalInfo(actionTemplates, problem) {
+class DecompGlobal(actionTemplates: List[DecompAction], problem: Problem, val recipes:List[Recipe]) extends GlobalInfo(actionTemplates, problem) {
   
   override def initPlan(): Plan = {
     val initStep = Action(Constants.INIT_ID, "init-state", List[Variable](), List[Proposition](), List[Proposition](), initState)

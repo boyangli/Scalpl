@@ -94,6 +94,7 @@ abstract class AbstractPlanParser extends PopParser {
         case o: PopObject => if (o != PopObject.unknown && o.pType == "Any") getOrError(o, o.name, actionHash) else o
       }
 
+      // must handle DecompAction here
       action match {
         case dact: DecompAction =>
           DecompAction(action.name, actor, action.parameters, newConstraints, newPreconds, newEffects, dact.composite)

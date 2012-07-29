@@ -56,9 +56,9 @@ object DecompRepair extends Logging {
         recipe =>
 
           var highStep = p.stepCount
-          val newSteps = recipe.steps map {
+          val newSteps = for(s <- recipe.steps) yield {
             highStep += 1
-            _.doubleInstantiate(highStep, parent.id)
+            s.doubleInstantiate(highStep, parent.id)
           }
 
           val newLinks = recipe.links map {
@@ -69,12 +69,12 @@ object DecompRepair extends Logging {
               new Link(id1, id2, cond, cond)
           }
 
-          val newOrderings = p.ordering.list ++ recipe.ordering map {
+          val newOrderings = p.ordering.list ++ (recipe.ordering map {
             order: (Int, Int) =>
               val id1 = newSteps(order._1).id
               val id2 = newSteps(order._2).id
               (id1, id2)
-          }
+          })
 
           val undecomp = newSteps filter { _.composite } map { s => new UnDecomposed(s.id) }
           val open = newSteps flatMap { step =>
@@ -90,7 +90,7 @@ object DecompRepair extends Logging {
             steps = newSteps ::: p.steps,
             links = newLinks ::: p.links,
             dlinks = newDlink :: p.dlinks, // Don't forget to insert the correct DecompLink
-            flaws = undecomp ::: open ::: p.flaws,
+            flaws = undecomp ::: open ::: (p.flaws - und),
             reason = reasonString,
             ordering = new Ordering(newOrderings),
             history = new Record("decompose", highStep, reasonString) :: p.history,
@@ -121,6 +121,7 @@ object DecompRepair extends Logging {
       plans map {
         p =>
           val newStep = p.id2step(p.stepCount).get.asInstanceOf[DecompAction]
+          println("inserted step " + newStep)
           if (newStep.composite)
             p.copy(flaws = new UnDecomposed(newStep.id) :: p.flaws)
           else p

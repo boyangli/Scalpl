@@ -1,11 +1,11 @@
 (problem
 (init 
 	(has jack:Person money:Object)
-	(at tom:Person home:Location)
+	(at tom:Person shop:Location)
 	(at jack:Person home:Location)
 )
 (goal
-	(has tom money)
+	(murder-happened)
 	(dead jack)
 )
 
