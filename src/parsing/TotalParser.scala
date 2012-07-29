@@ -74,7 +74,8 @@ object TotalParser extends AbstractPlanParser {
               } else {
                 val specifiedType = typeOpt.get.pType
                 if (specifiedType != standard.pType) // type mismatch TODO: Test for subclass. I forgot which method does that.
-                  throw new PopParsingException("Required type: " + standard.pType + ". Variable " + specified + " has type " + specifiedType)
+                  throw new PopParsingException("Action " + name + " requires type: " + standard.pType + ", but variable " + specified.name + 
+                      " is of type " + specifiedType + " in decomposition " + r.name)
                 else {
                   val newVar = new Variable(specified.name, standard.pType) // TODO: compute the type intersection i.e. highest common denominator
                   arguments += newVar

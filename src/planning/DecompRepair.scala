@@ -121,7 +121,7 @@ object DecompRepair extends Logging {
       plans map {
         p =>
           val newStep = p.id2step(p.stepCount).get.asInstanceOf[DecompAction]
-          println("inserted step " + newStep)
+          //println("inserted step " + newStep)
           if (newStep.composite)
             p.copy(flaws = new UnDecomposed(newStep.id) :: p.flaws)
           else p

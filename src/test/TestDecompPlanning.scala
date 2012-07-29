@@ -7,16 +7,16 @@ import action._
 
 object TestDecompPlanning extends App {
 
-  val problemFile = "./planfiles/dpocl1.prob"
-  val actionFile = "./planfiles/dpocl1.act"
-  val decompFile = "./planfiles/dpocl1.decomp"
+  val problemFile = "./planfiles/game1.prob"
+  val actionFile = "./planfiles/game1.act"
+  val decompFile = "./planfiles/game1.decomp"
 
   val (problem, actions, recipes) = TotalParser.decompParse(problemFile, actionFile, decompFile)
   //val recipes = DecompParser.readFile(decompFile)
   val g = new DecompGlobal(actions, problem, recipes)
   var plan = g.initPlan()
   //Global.debug = true
-  val parameter = new SearchParameter(500)
+  val parameter = new SearchParameter(50000)
   val bestfirst = new BestFirstSearch[Plan](List(plan), DecompRepair.refine(g) _, complete _, eval _, parameter)
   /*
   g.actionTemplates.foreach { a =>
@@ -31,6 +31,7 @@ object TestDecompPlanning extends App {
   val first = bestfirst.search()
 
   println(first.detailString())
+  println(bestfirst.stats)
   /*
   for (i <- 0 to 2) {
     var plans = DecompRepair.refine(g)(plan)
