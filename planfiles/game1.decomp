@@ -1,0 +1,14 @@
+(decomposition kill-acquire
+	(steps
+		(step1 (move ?p1 ?place1 ?place2))
+		(step2 (kill ?p1 ?p2 ?place2))
+		(step3 (drop ?p2 ?object1 ?place2))
+		(step4 (pick-up ?p1 ?object1 ?place2))
+	)
+	(links
+		(step1 -> step2 (at ?p1 ?place2))
+	)
+	(ordering		
+		(step1 step2)
+	)
+)

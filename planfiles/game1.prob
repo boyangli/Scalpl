@@ -1,0 +1,18 @@
+(problem
+(init 
+	(at warrior:Person home:Location)
+	(at goblin:Monster cave:Location)
+	(has goblin sword:Object)
+	(at king:Person castle:Location)
+	(want king sword)
+	(has king money:Object)
+)
+(goal
+	(acquire-complete)
+	(has warrior money)
+)
+
+(classes
+
+)
+)
