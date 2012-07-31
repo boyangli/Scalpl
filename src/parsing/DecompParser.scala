@@ -43,7 +43,7 @@ object DecompParser extends PopParser {
       {
         case name ~ "(" ~ "steps" ~ steps ~ ")" ~
           "(" ~ "links" ~ links ~ ")" ~
-          "(" ~ "ordering" ~ orderings =>
+          "(" ~ "ordering" ~ orderings =>            
           new RawRecipe(name, steps, links, orderings)
       }
 

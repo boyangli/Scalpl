@@ -17,6 +17,8 @@ object DecompRepair extends Logging {
       if (!g.isInstanceOf[DecompGlobal])
         throw new DecompException("The global object is not an instance of DecompGlobal")
 
+      trace { "reparing plan " + p.id }
+      
       val kids =
         SimpleRepair.selectFlaw(p) match {
           case open: OpenCond =>
@@ -42,6 +44,10 @@ object DecompRepair extends Logging {
           } mkString
       }
 
+      debug {
+        readLine()
+      }
+
       kids
     }
 
@@ -56,7 +62,7 @@ object DecompRepair extends Logging {
         recipe =>
 
           var highStep = p.stepCount
-          val newSteps = for(s <- recipe.steps) yield {
+          val newSteps = for (s <- recipe.steps) yield {
             highStep += 1
             s.doubleInstantiate(highStep, parent.id)
           }
@@ -74,7 +80,7 @@ object DecompRepair extends Logging {
               val id1 = newSteps(order._1).id
               val id2 = newSteps(order._2).id
               (id1, id2)
-          })
+          }) ++ (newSteps flatMap { s => List((s.id, Constants.GOAL_ID), (Constants.INIT_ID, s.id)) })
 
           val undecomp = newSteps filter { _.composite } map { s => new UnDecomposed(s.id) }
           val open = newSteps flatMap { step =>
@@ -128,8 +134,9 @@ object DecompRepair extends Logging {
       }
     }
 
-  /** Find all un-decomposed actions in the plan and add them as flaws
-   * This method is currently not used. 
+  /**
+   * Find all un-decomposed actions in the plan and add them as flaws
+   * This method is currently not used.
    */
   def detectDecompFlaws(p: DecompPlan): List[Flaw] =
     {

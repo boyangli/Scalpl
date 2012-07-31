@@ -28,6 +28,7 @@ object TotalParser extends AbstractPlanParser {
 
       problem = new Problem(init, goal, problem.subclasses)
       actionList = actionList map { appendTypesToTemplate(_).asInstanceOf[DecompAction] }
+      actionList foreach { _.testValid() }
 
       var rawRecipes = DecompParser.readFile(recipeFile, actionList)
       val recipes = extractRecipes(rawRecipes, actionList.map { _.asInstanceOf[DecompAction] }, problem)
@@ -61,7 +62,9 @@ object TotalParser extends AbstractPlanParser {
           if (step._2.termlist.size != act.parameters.size)
             throw new PopParsingException("parameter list does not match for action " + step._2.verb)
           val pairs = act.parameters zip (step._2.termlist)
+          
           pairs foreach {
+            
             case (standard, specified: Variable) =>
               // try to get a type from the parent action
               val typeOpt = parent.parameters.find(_.name == specified.name)
@@ -72,20 +75,29 @@ object TotalParser extends AbstractPlanParser {
                  */
                 throw new PopParsingException("Warning: " + specified + " is a free variable in decomposition.")
               } else {
+                var newVar: Variable = null
                 val specifiedType = typeOpt.get.pType
-                if (specifiedType != standard.pType) // type mismatch TODO: Test for subclass. I forgot which method does that.
-                  throw new PopParsingException("Action " + name + " requires type: " + standard.pType + ", but variable " + specified.name + 
-                      " is of type " + specifiedType + " in decomposition " + r.name)
-                else {
-                  val newVar = new Variable(specified.name, standard.pType) // TODO: compute the type intersection i.e. highest common denominator
-                  arguments += newVar
-
-                  // replace the standard variable with the newly made variable
-                  if (standard != newVar) {
-                    constraints = constraints map { _.substitute(standard, newVar) }
-                    preconds = preconds map { _.substitute(standard, newVar) }
-                    effects = effects map { _.substitute(standard, newVar) }
+                if (specifiedType != standard.pType)  
+                {
+                  // type mismatch. check if subtype relation exists
+                  if (!problem.isSubtype(specifiedType, standard.pType)) {
+                    // no subtype relation exists
+                    throw new PopParsingException("Action " + name + " requires type: " + standard.pType + ", but variable " +
+                      specified.name + " is of type " + specifiedType + " in decomposition " + r.name)
+                  } else {
+                    // the specified type is a subtype of the standard type from the action
+                    newVar = new Variable(specified.name, specifiedType)
+                    arguments += newVar
                   }
+                } else {
+                  newVar = new Variable(specified.name, standard.pType)
+                  arguments += newVar
+                }
+                // replace the standard variable with the newly made variable
+                if (newVar != null && standard != newVar) {
+                  constraints = constraints map { _.substitute(standard, newVar) }
+                  preconds = preconds map { _.substitute(standard, newVar) }
+                  effects = effects map { _.substitute(standard, newVar) }
                 }
               }
 
@@ -117,12 +129,14 @@ object TotalParser extends AbstractPlanParser {
       }
 
       // TODO: Compute orderings
-      val orderings = r.ordering map {
+      var orderings = r.ordering map {
         order =>
           val num1 = steps.indexWhere(_._1 == order._1)
           val num2 = steps.indexWhere(_._1 == order._2)
           (num1, num2)
       }
+      
+      orderings = (links.map{l => (l.id1, l.id2)} ::: orderings).distinct
 
       new Recipe(r.name, steps map { _._2 }, links, orderings)
     }
@@ -152,6 +166,7 @@ object TotalParser extends AbstractPlanParser {
 
       problem = new Problem(init, goal, problem.subclasses)
       listAction = listAction map { appendTypesToTemplate(_) }
+      listAction foreach { _.testValid() }
 
       (problem, listAction)
     }

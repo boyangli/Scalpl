@@ -15,9 +15,11 @@ class Action(
   val effects: List[Proposition],
   val dummy: Boolean = false) extends Logging {
 
-  testValid()
+  //testValid() // validity test is moved to parsing. There is no need to test actions after they are loaded.
 
-  // all variables referred in an action must appear in its parameter list
+  /** All variables referred in an action must appear in its parameter list.
+   *  Returns nothing. Throws exceptions when the action is not valid
+   */
   def testValid() {
     // all distinct variables referred to by this action 
     val allvars = (preconditions ::: constraints ::: effects).flatMap(p => p.allVariables).distinct

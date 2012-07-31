@@ -143,7 +143,7 @@ object PlanParser extends AbstractPlanParser {
       // we need the problem file to read in the class hierarchies
       val problem = ProblemParser.readFile(problemFile)
       // should we set subclasses when reading a frame?
-      g.classes = problem.subclasses
+      g.ontology = problem.subclasses
 
       val plantext = scala.io.Source.fromFile(planFile)
 

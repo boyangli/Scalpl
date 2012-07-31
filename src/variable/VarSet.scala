@@ -6,7 +6,6 @@ import scala.collection.mutable.ListBuffer
 import planning._
 import structures._
 
-
 class VarSet(val equals: List[Token], val nonEquals: List[Token], val groundObj: PopObject) {
 
   private var defined = false
@@ -94,7 +93,7 @@ class VarSet(val equals: List[Token], val nonEquals: List[Token], val groundObj:
 
   override def toString() = equals.mkString("<varset: (", ", ", ")" +
     (if (isGrounded()) "=" + groundObj else "") +
-    "; ") + 
+    "; ") +
     (if (nonEquals != Nil) nonEquals.mkString("non-equal: (", ", ", ")")) + ">"
 
   override def hashCode(): Int =
@@ -104,6 +103,9 @@ class VarSet(val equals: List[Token], val nonEquals: List[Token], val groundObj:
 
   def isCompatibleWith(that: VarSet): Boolean =
     {
+      // not sure if this commented portion is less efficient
+      //(that.equals intersect this.nonEquals).isEmpty && 
+      //(this.equals intersect that.nonEquals).isEmpty && 
       that.equals.forall(!this.nonEquals.contains(_)) && // none of the nonequals is contained in the equals 
         this.equals.forall(!that.nonEquals.contains(_)) &&
         (!(this.isGrounded() && that.isGrounded() && this.groundObj != that.groundObj)) // each is bounded to a different symbol: failure
@@ -111,22 +113,22 @@ class VarSet(val equals: List[Token], val nonEquals: List[Token], val groundObj:
 
   /**
    * warning: this methods does not check for incompatiability. The user must check it before applying this method
-   *
+   * merges one varset with another varset
    */
   def mergeWith(that: VarSet): VarSet =
     {
       new VarSet(this.equals ::: that.equals, this.nonEquals ::: that.nonEquals, if (this.isGrounded()) this.groundObj else that.groundObj)
     }
-  
-  def equalsAndSymbol() = if (isGrounded()) groundObj::equals else equals
+
+  def equalsAndSymbol() = if (isGrounded()) groundObj :: equals else equals
 }
 
 object VarSet {
 
-//  def apply(s: Symbol, vars: Variable*): VarSet =
-//    {
-//      new VarSet(vars.toList, List[Variable](), s)
-//    }
+  //  def apply(s: Symbol, vars: Variable*): VarSet =
+  //    {
+  //      new VarSet(vars.toList, List[Variable](), s)
+  //    }
 
   def apply(s: PopObject, vars: Variable*): VarSet =
     {
@@ -172,8 +174,6 @@ object VarSet {
     }
 }
 
-
-
 class BindingException(msg: String) extends Exception(msg)
 
 object VarSet_Test {
@@ -210,16 +210,15 @@ object VarSet_Test {
   //  }
   def main(args: Array[String]) {
     val g = new GlobalInfo(Nil, null)
-	  val p1 = Proposition.parse("(kick jack tom ?p2 ?p3)")
-	  val p2 = Proposition.parse("(kick jack ?p4 jill ?p6)")
-	  var bind = new Binding()
-	  //bind += VarSet(Variable("?p4"), 'tom)
-	  //bind += VarSet(Variable("?p2"), 'adam)
-	  val list = bind.separate(p1, p2, g)
-//	  val b = list(0)
-//	  println(b.hashes.keySet)
-	  println(list.mkString("\n\n"))
+    val p1 = Proposition.parse("(kick jack tom ?p2 ?p3)")
+    val p2 = Proposition.parse("(kick jack ?p4 jill ?p6)")
+    var bind = new Binding()
+    //bind += VarSet(Variable("?p4"), 'tom)
+    //bind += VarSet(Variable("?p2"), 'adam)
+    val list = bind.separate(p1, p2, g)
+    //	  val b = list(0)
+    //	  println(b.hashes.keySet)
+    println(list.mkString("\n\n"))
   }
-  
-  
+
 }

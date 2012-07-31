@@ -33,7 +33,10 @@ object ActionParser extends AbstractActionParser {
       val result = parseAll(actionlist, lines)
 
       result match {
-        case Success(x, _) => return x
+        case Success(x, _) => {
+          x foreach { _.testValid }
+          return x
+        }
         case NoSuccess(err, next) => {
           println("failed to parse input as actions" +
             "(line " + next.pos.line + ", column " + next.pos.column + "):\n" +
@@ -81,7 +84,10 @@ object DecompActionParser extends AbstractActionParser {
       val result = parseAll(actionlist, lines)
 
       result match {
-        case Success(x, _) => return x
+        case Success(x, _) => {
+          x foreach { _.testValid() }
+          return x
+        }
         case NoSuccess(err, next) => {
           println("failed to parse input as actions" +
             "(line " + next.pos.line + ", column " + next.pos.column + "):\n" +
@@ -126,16 +132,16 @@ object DecompActionParser extends AbstractActionParser {
     "(" ~ "preconditions" ~ rep(prop) ~ closing ~
     "(" ~ "effects" ~ rep(prop) <~ closing ~
     closing ^^
-    {    
+    {
       case name ~ "(" ~ list1 ~ x1 ~ actor ~
         "(" ~ "constraints " ~ list2 ~ x2 ~
         "(" ~ "preconditions" ~ list3 ~ x3 ~
         "(" ~ "effects" ~ list4 =>
-          //          println("0: " + string + " 1: " + list1 + " 2: " + list2 + " 3: " + list3 + " 4 " + list4)
-          
-          actor match {
-            case Some(act) => DecompAction(name, act, list1, list2, list3, list4, true)
-            case None => DecompAction(name, list1, list2, list3, list4, true)
-          }
+        //          println("0: " + string + " 1: " + list1 + " 2: " + list2 + " 3: " + list3 + " 4 " + list4)
+
+        actor match {
+          case Some(act) => DecompAction(name, act, list1, list2, list3, list4, true)
+          case None => DecompAction(name, list1, list2, list3, list4, true)
+        }
     }
 }

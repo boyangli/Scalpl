@@ -5,7 +5,7 @@
 	(effects (not (at ?p1 ?place1)) (at ?p1 ?place2))
 	)
 
-(action kill (?p1:Person ?p2:Monster ?place:Location)
+(action kill (?p1:Person ?p2:Person ?place:Location)
      (actor ?p1)
 	 (constraints (neq ?p1 ?p2))	 
 	 (preconditions (at ?p1 ?place) (at ?p2 ?place) (not (dead ?p2)))

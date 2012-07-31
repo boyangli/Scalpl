@@ -7,7 +7,17 @@ import structures._
 class Problem(
   val init: List[Proposition],
   val goal: List[Proposition],
-  val subclasses: Map[String, Set[String]] = scala.collection.immutable.HashMap[String, Set[String]]())
+  val subclasses: Map[String, Set[String]] = scala.collection.immutable.HashMap[String, Set[String]]()) {
+
+  /** this method should only be used in TotalParser, where the Global Info object has not been constructed
+   * Subject to refactorization
+   */
+  def isSubtype(subType: String, superType: String): Boolean = {
+    if (subclasses.contains(superType))
+      return subclasses(superType).contains(subType)
+    else return false
+  }
+}
 
 abstract class AbstractGlobal {
 
@@ -20,7 +30,7 @@ class GlobalInfo(var actionTemplates: List[Action], problem: Problem) {
   var goalState = problem.goal
   var initialPlan: Plan = null
   var planVisited = 0
-  var classes: Map[String, Set[String]] = problem.subclasses
+  var ontology: Map[String, Set[String]] = problem.subclasses
 
   protected var planGenerated = 0
 
@@ -38,6 +48,12 @@ class GlobalInfo(var actionTemplates: List[Action], problem: Problem) {
     classes = problem.subclasses
   }
   */
+
+  def isSubtype(subType: String, superType: String): Boolean = {
+    if (ontology.contains(superType))
+      return ontology(superType).contains(subType)
+    else return false
+  }
 
   def initPlan(): Plan = {
     val initStep = Action.initState(initState)
@@ -57,8 +73,8 @@ class GlobalInfo(var actionTemplates: List[Action], problem: Problem) {
   }
 }
 
-class DecompGlobal(actionTemplates: List[DecompAction], problem: Problem, val recipes:List[Recipe]) extends GlobalInfo(actionTemplates, problem) {
-  
+class DecompGlobal(actionTemplates: List[DecompAction], problem: Problem, val recipes: List[Recipe]) extends GlobalInfo(actionTemplates, problem) {
+
   override def initPlan(): Plan = {
     val initStep = Action(Constants.INIT_ID, "init-state", List[Variable](), List[Proposition](), List[Proposition](), initState)
     val goalStep = Action(Constants.GOAL_ID, "goal", List[Variable](), List[Proposition](), goalState, List[Proposition]())
@@ -79,8 +95,8 @@ class DecompGlobal(actionTemplates: List[DecompAction], problem: Problem, val re
 
 class GadgetGlobal(actionTemplates: List[Action], problem: Problem, protoPlan: Plan) extends GlobalInfo(actionTemplates, problem) {
 
-  classes = mergeClasses(classes, problem.subclasses)
-  println("all classes: " + classes)
+  ontology = mergeClasses(ontology, problem.subclasses)
+  println("all classes: " + ontology)
   val prototype = protoPlan
   var gadgetPlanning = true
 

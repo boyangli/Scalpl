@@ -13,6 +13,7 @@
 )
 
 (classes
+	(subclass Monster Person)
 
 )
 )

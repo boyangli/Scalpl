@@ -7,6 +7,8 @@
 	)
 	(links
 		(step1 -> step2 (at ?p1 ?place2))
+		(step2 -> step3 (dead ?p2))
+		(step3 -> step4 (at ?object1 ?place2))		
 	)
 	(ordering		
 		(step1 step2)

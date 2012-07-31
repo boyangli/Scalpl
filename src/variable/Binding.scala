@@ -54,7 +54,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
    * and 2) respects the given constraints.
    *
    */
-  def unify(p1: Proposition, p2: Proposition, constraints: List[Proposition], initial: List[Proposition], g:GlobalInfo): Option[Binding] =
+  def unify(p1: Proposition, p2: Proposition, constraints: List[Proposition], initial: List[Proposition], g: GlobalInfo): Option[Binding] =
     {
       // step 1: match tokens pairwise
       val matched = matchTokens(p1, p2, g)
@@ -69,9 +69,9 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
 
   /**
    * superficially tests for unification without checking for constraints
-   *
+   * This provides a early failure that can be used as a first level filtering
    */
-  def canUnify(p1: Proposition, p2: Proposition, g:GlobalInfo): Boolean =
+  def canUnify(p1: Proposition, p2: Proposition, g: GlobalInfo): Boolean =
     {
       // step 1: match tokens pairwise
       val matched = matchTokens(p1, p2, g)
@@ -88,7 +88,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
    * still tests for consistency with constraints
    *
    */
-  def directUnify(p1: Proposition, p2: Proposition, constraints: List[Proposition], initial: List[Proposition], g:GlobalInfo): Option[Binding] =
+  def directUnify(p1: Proposition, p2: Proposition, constraints: List[Proposition], initial: List[Proposition], g: GlobalInfo): Option[Binding] =
     {
       // step 1: match tokens pairwise
       val matched = matchTokens(p1, p2, g)
@@ -127,7 +127,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
    * and 2) respects the given constraints.
    *
    */
-  def separate(p1: Proposition, p2: Proposition, g:GlobalInfo): List[Binding] =
+  def separate(p1: Proposition, p2: Proposition, g: GlobalInfo): List[Binding] =
     {
       // step 0: if they are already the same, no separation is possible and return Nil
       if (substVars(p1) == substVars(p2)) return Nil
@@ -146,7 +146,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
    * match tokens in two propositions into a list of pairs. If it returns None,
    * matching has failed due to their inherent differences
    */
-  private def matchTokens(p1: Proposition, p2: Proposition, g:GlobalInfo): Option[List[(Token, Token)]] =
+  private def matchTokens(p1: Proposition, p2: Proposition, g: GlobalInfo): Option[List[(Token, Token)]] =
     {
       // step 0: filter verbs and length
       if (p1.verb != p2.verb || p1.length != p2.length) return None
@@ -154,10 +154,24 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
       var answer = new ListBuffer[(Token, Token)]()
 
       (p1.termlist, p2.termlist).zipped.foreach((_, _) match {
-        case (t1: Token, t2: Token) => {
-          // check types of the tokens before matching them
-          if (typeCompatible(t1.pType, t2.pType, g))
-            answer += ((t1, t2))
+        case (v1: Variable, v2: Variable) => {
+          if (typeCompatible(v1.pType, v2.pType, g)) // check types of the tokens before matching them
+            answer += ((v1, v2))
+          else return None
+        }
+        case (v1: Variable, o2: PopObject) => {
+          if (o2.pType == v1.pType || g.isSubtype(o2.pType, v1.pType))
+            answer += ((v1, o2))
+          else return None
+        }
+        case (o1: PopObject, v2: Variable) => {
+          if (o1.pType == v2.pType || g.isSubtype(o1.pType, v2.pType))
+            answer += ((o1, v2))
+          else return None
+        }
+        case (o1: PopObject, o2: PopObject) => {
+          if (o1 == o2)
+            answer += ((o1, o2))
           else return None
         }
         case (p1: Proposition, p2: Proposition) =>
@@ -172,7 +186,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
       Some(answer.toList)
     }
 
-  private def looseMatchTokens(p1: Proposition, p2: Proposition, g:GlobalInfo): Option[List[(Token, Token)]] =
+  private def looseMatchTokens(p1: Proposition, p2: Proposition, g: GlobalInfo): Option[List[(Token, Token)]] =
     {
       // step 0: filter verbs and length
       if (p1.verb != p2.verb || p1.length != p2.length) return None
@@ -199,6 +213,9 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
       Some(answer.toList)
     }
 
+  /** replace variables with the symbols they are bounded with
+   * 
+   */
   private def revealTokenValues(list: List[(Token, Token)]): List[(Token, Token)] =
     {
       list.map(elem =>
@@ -238,7 +255,9 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
               // they are compatible as long as their varsets are
               case (t1, t2) =>
                 (hashes.get(t1), hashes.get(t2)) match {
-                  case (Some(vs1: VarSet), Some(vs2: VarSet)) => vs1.isCompatibleWith(vs2)
+                  case (Some(vs1: VarSet), Some(vs2: VarSet)) =>
+                    //debug {"vs1 = " + vs1 + " vs2 = " + vs2}
+                    vs1.isCompatibleWith(vs2)
                   case _ => true
                 }
             })
@@ -389,22 +408,22 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
   def canEqual(p1: Proposition, p2: Proposition) =
     substVars(p1) equalsIgnoreVars substVars(p2)
 
-  def typeCompatible(type1: String, type2: String, g:GlobalInfo): Boolean =
+  def typeCompatible(type1: String, type2: String, g: GlobalInfo): Boolean =
     {
       if (type1 == type2) return true
       else {
-        val topology = g.classes
-        if (topology == null) return false
+        val ontology = g.ontology
+        if (ontology == null) return false
 
         // subclass1 and 2 are sets of subclasses of their types
-        val subclass1 = topology.getOrElse(type1, Set())
-        val subclass2 = topology.getOrElse(type2, Set())
+        val subclass1 = ontology.getOrElse(type1, Set())
+        val subclass2 = ontology.getOrElse(type2, Set())
         (subclass1 contains type2) || (subclass2 contains type1)
       }
     }
 
   def analogicallyUnify(p1: Proposition, p2: Proposition, constraints: List[Proposition],
-                        initial: List[Proposition], g:GadgetGlobal): Option[Binding] =
+    initial: List[Proposition], g: GadgetGlobal): Option[Binding] =
     {
       // step 1: match tokens pairwise
       val matched = looseMatchTokens(p1, p2, g)

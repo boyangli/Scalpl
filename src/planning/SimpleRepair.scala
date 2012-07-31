@@ -237,9 +237,10 @@ object SimpleRepair extends Logging {
 
           oldstep.effects foreach {
             effect =>
+              debug("trying to reuse effect: " + stepId + ": " + effect + " for " + open.condition)
               if (p.binding.canUnify(effect, open.condition, g)) // filtering obviously impossible effects
               {
-                debug("trying to reuse effect: " + stepId + ": " + effect + " for " + open.condition)
+                debug( "     TRUE \n")
                 val constraints = (oldstep.constraints ::: p.id2step(open.id).map(_.constraints).getOrElse(Nil)) filterNot { _.verb == 'neq }
 
                 p.binding.directUnify(effect, open.condition, constraints, init, g) match {
@@ -266,7 +267,7 @@ object SimpleRepair extends Logging {
                   case None => debug("reuse failed")
                 }
               }
-          }
+              else debug("false")          }
       }
       kids
     }

@@ -1,5 +1,6 @@
 package test
 import planning._
+import logging._
 import structures._
 import parsing._
 import bestfirst._
@@ -15,7 +16,7 @@ object TestDecompPlanning extends App {
   //val recipes = DecompParser.readFile(decompFile)
   val g = new DecompGlobal(actions, problem, recipes)
   var plan = g.initPlan()
-  //Global.debug = true
+  //DebugInfo.setDebug()
   val parameter = new SearchParameter(50000)
   val bestfirst = new BestFirstSearch[Plan](List(plan), DecompRepair.refine(g) _, complete _, eval _, parameter)
   /*
@@ -54,6 +55,39 @@ object TestDecompPlanning extends App {
         val past = p.history.map {
           record =>
             record.oper match {
+              case "insert" => 20
+              case "reuse" => 10
+              case "closed-world" => 10
+              case "promote" => 10
+              case "demote" => 10
+              case "separate" => 10
+              case "decompose" => 10
+            }
+        }.foldLeft(0)((a, b) => a + b)
+
+        val future = p.flaws.map {
+          f =>
+            f match {
+              case o: OpenCond => 10
+              case t: Threat => 10
+              case u: UnDecomposed => 10
+            }
+        }.foldLeft(0)((a, b) => a + b)
+        
+        val variables = p.steps flatMap {_.parameters} distinct
+        val unbounded = variables.filter{v => p.binding.getBoundedSymbol(v).isEmpty}.size * 0.5
+
+        past + future + unbounded
+      }
+    }
+
+  def evalOld(p: Plan): Double =
+    {
+      if (p.flaws == Nil) 0
+      else {
+        val past = p.history.map {
+          record =>
+            record.oper match {
               case "insert" => 2
               case "reuse" => 1
               case "closed-world" => 1
@@ -72,9 +106,8 @@ object TestDecompPlanning extends App {
               case u: UnDecomposed => 1
             }
         }.foldLeft(0)((a, b) => a + b)
-
+        
         past + future
       }
     }
-
 }

@@ -16,6 +16,7 @@ case class Proposition(val verb: Symbol, val termlist: List[TopTerm]) extends To
   //def this(verb: PopSymbol, list: List[TopTerm]) = this(verb, TermList(list))
 
   def length = termlist.length + 1
+  
   override def toString(): String = {
     if (termlist.length == 0)
       "Prop: " + verb
@@ -213,7 +214,7 @@ case class Variable(override val name: String, override val pType: String, val n
 
   def this(name: String, varType: String) = this(name, varType, 0)
 
-  override def toString: String =
+  override def toString(): String =
     if (number == 0) "v-" + name + ":" + pType
     else "v-" + name + "-" + number + ":" + pType
 
