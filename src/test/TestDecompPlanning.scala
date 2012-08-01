@@ -13,8 +13,11 @@ object TestDecompPlanning extends App {
   val decompFile = "./planfiles/game1.decomp"
 
   val (problem, actions, recipes) = TotalParser.decompParse(problemFile, actionFile, decompFile)
-  //val recipes = DecompParser.readFile(decompFile)
+  
+  
+  
   val g = new DecompGlobal(actions, problem, recipes)
+  println(g.ontology)
   var plan = g.initPlan()
   //DebugInfo.setDebug()
   val parameter = new SearchParameter(50000)
@@ -75,7 +78,7 @@ object TestDecompPlanning extends App {
         }.foldLeft(0)((a, b) => a + b)
         
         val variables = p.steps flatMap {_.parameters} distinct
-        val unbounded = variables.filter{v => p.binding.getBoundedSymbol(v).isEmpty}.size * 0.5
+        val unbounded = variables.filter{v => p.binding.getBoundedSymbol(v).isEmpty}.size
 
         past + future + unbounded
       }

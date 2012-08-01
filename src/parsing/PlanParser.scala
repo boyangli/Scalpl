@@ -1,5 +1,5 @@
 package parsing
-
+/*
 import scala.collection.mutable.HashMap
 
 import variable._
@@ -143,7 +143,7 @@ object PlanParser extends AbstractPlanParser {
       // we need the problem file to read in the class hierarchies
       val problem = ProblemParser.readFile(problemFile)
       // should we set subclasses when reading a frame?
-      g.ontology = problem.subclasses
+      g.ontology = problem.ontology
 
       val plantext = scala.io.Source.fromFile(planFile)
 
@@ -253,3 +253,4 @@ object PlanParser extends AbstractPlanParser {
     println(frame._3.planString)
   }
 }
+*/

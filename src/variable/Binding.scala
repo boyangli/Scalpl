@@ -12,28 +12,28 @@ import action._
  *  It provides multiple use methods for adding VarSets into the hash map, retrieving them, etc. Most importantly,
  *  it provides the function to create a new binding which makes two propositions identical or certainly different.
  */
-class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
+class Binding private (val token2varset: HashMap[Token, VarSet]) extends Logging {
 
   def this() = this(new HashMap[Token, VarSet]())
 
   def +(vs: VarSet): Binding = {
     // clone the current hash map, for the hash map is mutable.
-    val bind = new Binding(hashes.clone())
+    val bind = new Binding(token2varset.clone())
     // insert the varset and its indices into the new hash map
-    vs.equals.foreach(v => bind.hashes += (v -> vs))
+    vs.equals.foreach(v => bind.token2varset += (v -> vs))
     if (vs.isGrounded())
-      bind.hashes += (vs.groundObj -> vs)
+      bind.token2varset += (vs.groundObj -> vs)
     bind
   }
 
   def +(vss: VarSet*): Binding = {
     // here  vss is a liist of varsets
-    val bind = new Binding(hashes.clone())
+    val bind = new Binding(token2varset.clone())
 
     vss foreach { vs =>
-      vs.equals.foreach(v => bind.hashes += (v -> vs))
+      vs.equals.foreach(v => bind.token2varset += (v -> vs))
       if (vs.isGrounded())
-        bind.hashes += (vs.groundObj -> vs)
+        bind.token2varset += (vs.groundObj -> vs)
     }
     bind
   }
@@ -42,11 +42,11 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
    * returns the varset associated with this token
    *
    */
-  def get(token: Token) = hashes.get(token)
+  def get(token: Token) = token2varset.get(token)
 
   override def toString(): String =
     {
-      hashes.values.mkString("\n")
+      token2varset.values.mkString("\n")
     }
 
   /**
@@ -64,7 +64,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
       // step 3: check for superficial inconsistencies. If there is, return None
       if (!isPairConsistent(valued)) return None
       // step 4: check for constraints and, if the check passes, create a new binding that unifies the two propositions
-      unifyWithConstraints(valued, constraints, initial)
+      unifyWithConstraints(valued, constraints, initial, g.ontology)
     }
 
   /**
@@ -93,14 +93,14 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
       // step 1: match tokens pairwise
       val matched = matchTokens(p1, p2, g)
       val valued = revealTokenValues(matched.get)
-      unifyWithConstraints(valued, constraints, initial)
+      unifyWithConstraints(valued, constraints, initial, g.ontology)
     }
 
   /**
    * add a bunch of neq propositions into the binding
    *
    */
-  def addNeqs(neqs: List[Proposition]): Binding =
+  def addNeqs(neqs: List[Proposition], ontology:Ontology): Binding =
     {
       var newbind = this
       neqs foreach { neq =>
@@ -160,12 +160,12 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
           else return None
         }
         case (v1: Variable, o2: PopObject) => {
-          if (o2.pType == v1.pType || g.isSubtype(o2.pType, v1.pType))
+          if (o2.pType == v1.pType || g.ontology.isSubtype(o2.pType, v1.pType))
             answer += ((v1, o2))
           else return None
         }
         case (o1: PopObject, v2: Variable) => {
-          if (o1.pType == v2.pType || g.isSubtype(o1.pType, v2.pType))
+          if (o1.pType == v2.pType || g.ontology.isSubtype(o1.pType, v2.pType))
             answer += ((o1, v2))
           else return None
         }
@@ -254,7 +254,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
               // if one of the two is a variable,
               // they are compatible as long as their varsets are
               case (t1, t2) =>
-                (hashes.get(t1), hashes.get(t2)) match {
+                (token2varset.get(t1), token2varset.get(t2)) match {
                   case (Some(vs1: VarSet), Some(vs2: VarSet)) =>
                     //debug {"vs1 = " + vs1 + " vs2 = " + vs2}
                     vs1.isCompatibleWith(vs2)
@@ -267,7 +267,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
       }
     }
 
-  def unifyWithConstraints(list: List[(Token, Token)], constraints: List[Proposition], initial: List[Proposition]): Option[Binding] =
+  def unifyWithConstraints(list: List[(Token, Token)], constraints: List[Proposition], initial: List[Proposition], ontology:Ontology): Option[Binding] =
     {
       var bind: Binding = this
       list.foreach {
@@ -276,19 +276,35 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
           case (s1: PopObject, s2: PopObject) => // their consistency is already checked, so we don't check again
           case (v1: Token, v2: Token) =>
             {
-              (hashes.get(v1), hashes.get(v2)) match {
+              (token2varset.get(v1), token2varset.get(v2)) match {
                 case (Some(vs1: VarSet), Some(vs2: VarSet)) =>
                   debug("unifying: " + vs1 + " " + vs2)
-                  bind += vs1.mergeWith(vs2)
+                  
+                  // varset compatibility
+                  if (!ontology.compatible(vs1.pType, vs2.pType)) return None
+                  
+                  bind += vs1.mergeWith(vs2, ontology)
                 case (Some(vs1: VarSet), None) =>
                   debug("unifying: " + vs1 + " " + v2)
-                  bind += vs1.bindTo(v2)
+                  
+                  // varset compatibility
+                  if (!ontology.compatible(vs1.pType, v2.pType)) return None
+                  
+                  bind += vs1.bindTo(v2, ontology)
                 case (None, Some(vs2: VarSet)) =>
                   debug("unifying: " + v1 + " " + vs2)
-                  bind += vs2.bindTo(v1)
+                  
+                  // varset compatibility
+                  if (!ontology.compatible(v1.pType, vs2.pType)) return None
+                  
+                  bind += vs2.bindTo(v1, ontology)
                 case (None, None) =>
                   debug("new varset for: " + v1 + " " + v2)
-                  bind += VarSet(v1, v2)
+                  
+                  // varset compatibility
+                  if (!ontology.compatible(v1.pType, v2.pType)) return None
+                  
+                  bind += VarSet(ontology, v1, v2)
               }
             }
         }
@@ -325,7 +341,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
           case (s1: PopObject, s2: PopObject) => // ignore this pair. Whether they are the same or not, we cannot do anything 
           case (v1: Token, v2: Token) =>
             {
-              (hashes.get(v1), hashes.get(v2)) match {
+              (token2varset.get(v1), token2varset.get(v2)) match {
                 case (Some(vs1: VarSet), Some(vs2: VarSet)) =>
 
                   if ((!vs1.isGrounded() || !vs2.isGrounded())
@@ -360,10 +376,10 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
       answer.toList
     }
 
-  override def clone() = new Binding(hashes.clone())
+  override def clone() = new Binding(token2varset.clone())
 
   def getBoundedSymbol(v: Variable): Option[PopObject] =
-    hashes.get(v) filter { _.isGrounded() } map { _.groundObj }
+    token2varset.get(v) filter { _.isGrounded() } map { _.groundObj }
 
   def substVars(p: Proposition): Proposition =
     {
@@ -416,9 +432,13 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
         if (ontology == null) return false
 
         // subclass1 and 2 are sets of subclasses of their types
-        val subclass1 = ontology.getOrElse(type1, Set())
-        val subclass2 = ontology.getOrElse(type2, Set())
-        (subclass1 contains type2) || (subclass2 contains type1)
+        val subclass1 = ontology.subTypes(type1)
+        val subclass2 = ontology.subTypes(type2)
+        
+        if (subclass1.isEmpty && subclass2.isEmpty) false
+        else if (subclass1.isEmpty && subclass2.isDefined) (subclass2.get contains type1)
+        else if (subclass1.isDefined && subclass2.isEmpty) (subclass1.get contains type2)
+        else (subclass1.get contains type2) || (subclass2.get contains type1)
       }
     }
 
@@ -432,7 +452,7 @@ class Binding private (val hashes: HashMap[Token, VarSet]) extends Logging {
       val valued = revealTokenValues(matched.get)
       // step 3: check for superficial inconsistencies. If there is, return None
       if (!isPairConsistent(valued)) return None
-      unifyWithConstraints(valued, constraints, initial)
+      unifyWithConstraints(valued, constraints, initial, g.ontology)
     }
 }
 

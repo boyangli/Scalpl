@@ -66,7 +66,7 @@ object ProblemParser extends PopParser {
         }
         // convert it into an immutable hash map
         println(classHash.toMap[String, Set[String]])
-        new Problem(list1, list2, classHash.toMap[String, Set[String]])
+        new Problem(list1, list2, new Ontology(classHash.toMap[String, Set[String]]))
     }
 
   def readFile(file: String): Problem =
@@ -94,7 +94,7 @@ object MainParser {
     val (prob, actions) = TotalParser.parse("./planfiles/test1.prob", "./planfiles/toyphone.act")
     println(prob.init)
     println(prob.goal)
-    println(prob.subclasses)
+    println(prob.ontology)
     println
     actions foreach { a =>
       println(a)

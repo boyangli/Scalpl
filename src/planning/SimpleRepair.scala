@@ -116,7 +116,7 @@ object SimpleRepair extends Logging {
           // instantiate this template
           val newStep = template.instantiate(highStep)
           val neqs = newStep.constraints filter { _.verb == 'neq }
-          val neqbind = p.binding.addNeqs(neqs)
+          val neqbind = p.binding.addNeqs(neqs, g.ontology)
           newStep.effects foreach {
             effect =>
               if (neqbind.canUnify(effect, open.condition, g)) // filtering obviously impossible effects

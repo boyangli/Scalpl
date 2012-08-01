@@ -26,7 +26,7 @@ object TotalParser extends AbstractPlanParser {
       val init = problem.init map { appendTypesTo(_) }
       val goal = problem.goal map { appendTypesTo(_) }
 
-      problem = new Problem(init, goal, problem.subclasses)
+      problem = new Problem(init, goal, problem.ontology)
       actionList = actionList map { appendTypesToTemplate(_).asInstanceOf[DecompAction] }
       actionList foreach { _.testValid() }
 
@@ -80,7 +80,7 @@ object TotalParser extends AbstractPlanParser {
                 if (specifiedType != standard.pType)  
                 {
                   // type mismatch. check if subtype relation exists
-                  if (!problem.isSubtype(specifiedType, standard.pType)) {
+                  if (!problem.ontology.isSubtype(specifiedType, standard.pType)) {
                     // no subtype relation exists
                     throw new PopParsingException("Action " + name + " requires type: " + standard.pType + ", but variable " +
                       specified.name + " is of type " + specifiedType + " in decomposition " + r.name)
@@ -164,7 +164,7 @@ object TotalParser extends AbstractPlanParser {
       val init = problem.init map { appendTypesTo(_) }
       val goal = problem.goal map { appendTypesTo(_) }
 
-      problem = new Problem(init, goal, problem.subclasses)
+      problem = new Problem(init, goal, problem.ontology)
       listAction = listAction map { appendTypesToTemplate(_) }
       listAction foreach { _.testValid() }
 
@@ -179,7 +179,7 @@ object TotalParser extends AbstractPlanParser {
       problem.goal foreach { collectTypes(_) }
       val init = problem.init map { appendTypesTo(_) }
       val goal = problem.goal map { appendTypesTo(_) }
-      new Problem(init, goal, problem.subclasses)
+      new Problem(init, goal, problem.ontology)
     }
 
   /**

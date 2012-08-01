@@ -7,16 +7,8 @@ import structures._
 class Problem(
   val init: List[Proposition],
   val goal: List[Proposition],
-  val subclasses: Map[String, Set[String]] = scala.collection.immutable.HashMap[String, Set[String]]()) {
+  val ontology:Ontology = Ontology.emptyInstance()) {
 
-  /** this method should only be used in TotalParser, where the Global Info object has not been constructed
-   * Subject to refactorization
-   */
-  def isSubtype(subType: String, superType: String): Boolean = {
-    if (subclasses.contains(superType))
-      return subclasses(superType).contains(subType)
-    else return false
-  }
 }
 
 abstract class AbstractGlobal {
@@ -30,7 +22,7 @@ class GlobalInfo(var actionTemplates: List[Action], problem: Problem) {
   var goalState = problem.goal
   var initialPlan: Plan = null
   var planVisited = 0
-  var ontology: Map[String, Set[String]] = problem.subclasses
+  var ontology:Ontology = problem.ontology
 
   protected var planGenerated = 0
 
@@ -48,12 +40,6 @@ class GlobalInfo(var actionTemplates: List[Action], problem: Problem) {
     classes = problem.subclasses
   }
   */
-
-  def isSubtype(subType: String, superType: String): Boolean = {
-    if (ontology.contains(superType))
-      return ontology(superType).contains(subType)
-    else return false
-  }
 
   def initPlan(): Plan = {
     val initStep = Action.initState(initState)
@@ -95,30 +81,11 @@ class DecompGlobal(actionTemplates: List[DecompAction], problem: Problem, val re
 
 class GadgetGlobal(actionTemplates: List[Action], problem: Problem, protoPlan: Plan) extends GlobalInfo(actionTemplates, problem) {
 
-  ontology = mergeClasses(ontology, problem.subclasses)
+  ontology = ontology.mergeWith(problem.ontology)
   println("all classes: " + ontology)
   val prototype = protoPlan
   var gadgetPlanning = true
 
-  def mergeClasses(subclass1: Map[String, Set[String]], subclass2: Map[String, Set[String]]): Map[String, Set[String]] =
-    {
 
-      // handle situations involving nulls
-      if (subclass1 == null) return subclass2
-      else if (subclass2 == null) return subclass1
-
-      var answer = subclass1
-      // now the real thing
-      subclass2.keys foreach {
-        key =>
-          val content2 = subclass2.get(key).get
-          subclass1.get(key) match {
-            case Some(content1) => answer += ((key, content1 ++ content2))
-            case None => answer += ((key, content2))
-          }
-      }
-
-      subclass1
-    }
 }
 

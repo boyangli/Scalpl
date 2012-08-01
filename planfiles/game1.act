@@ -33,7 +33,7 @@
 	(effects (not (has ?p1 ?o1)) (not (has ?p2 ?o2)) (has ?p1 ?o2) (has ?p2 ?o1) (not (want ?p2 ?o1)))
 	)
 	
-(composite action kill-acquire (?p1:Person ?p2:Monster ?place1:Location ?place2:Location ?object1:Object)
+(composite action kill-acquire (?p1:Player ?p2:Monster ?place1:Location ?place2:Location ?object1:Object)
 	(actor ?p1)
 	(constraints (neq ?p1 ?p2) (neq ?place1 ?place2))
 	(preconditions )
