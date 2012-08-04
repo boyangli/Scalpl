@@ -120,13 +120,14 @@ object SimpleRepair extends Logging {
           val neqbind = p.binding.addNeqs(neqs, g.ontology)
           newStep.effects foreach {
             effect =>
-              if (neqbind.canUnify(effect, open.condition, g)) // filtering obviously impossible effects
+              // changed to a delimited continuation version. Seems to be a little faster - Aug 04 Albert
+              // must respect constraints from both steps
+              def allConstraints() = ((p.id2step(open.id) map (_.constraints) getOrElse (Nil)) ::: (newStep.constraints)) filterNot (_.verb == 'neq)
+              if (neqbind.canUnifyPart1(effect, open.condition, allConstraints _, init, g)) // filtering obviously impossible effects
               {
-                // must respect constraints from both steps
-                val allConstraints = ((p.id2step(open.id) map (_.constraints) getOrElse (Nil)) ::: (newStep.constraints)) filterNot (_.verb == 'neq)
 
                 debug("trying inserting step " + newStep + " with effect: " + effect + " for " + open.condition)
-                neqbind.directUnify(effect, open.condition, allConstraints, init, g) match {
+                neqbind.continueUnify() match {
                   case Some(newbind: Binding) =>
                     debug("unification succeeds")
                     var newordering =
@@ -237,12 +238,11 @@ object SimpleRepair extends Logging {
           oldstep.effects foreach {
             effect =>
               debug("trying to reuse effect: " + stepId + ": " + effect + " for " + open.condition)
-              if (p.binding.canUnify(effect, open.condition, g)) // filtering obviously impossible effects
+              // changed to a delimited continuation version. Seems to be a little faster - Aug 04 Albert
+              def constraints() = (oldstep.constraints ::: p.id2step(open.id).map(_.constraints).getOrElse(Nil)) filterNot { _.verb == 'neq }
+              if (p.binding.canUnifyPart1(effect, open.condition, constraints, init, g)) // filtering obviously impossible effects
               {
-                debug("     TRUE \n")
-                val constraints = (oldstep.constraints ::: p.id2step(open.id).map(_.constraints).getOrElse(Nil)) filterNot { _.verb == 'neq }
-
-                p.binding.directUnify(effect, open.condition, constraints, init, g) match {
+                p.binding.continueUnify() match {
                   case Some(newbind: Binding) =>
                     debug("reuse succeeds")
                     var newOrdering = Set(((stepId, open.id)))

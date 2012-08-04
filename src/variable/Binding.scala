@@ -1,11 +1,13 @@
 package variable
 
-import scala.collection.mutable.HashMap
 import logging._
-import scala.collection.mutable.ListBuffer
 import planning._
 import structures._
 import action._
+
+import scala.collection.mutable.HashMap
+import scala.collection.mutable.ListBuffer
+import scala.util.continuations._;
 
 /**
  * A Binding object is a layer added on a hash map, which indexes the VarSet objects with the PopObject or Variable.
@@ -81,6 +83,42 @@ class Binding private (val token2varset: HashMap[Token, VarSet]) extends Logging
       // step 3: check for superficial inconsistencies. If there is, return None
       if (!isPairConsistent(valued, g)) return false
       else return true
+    }
+
+  var unifyCont: Unit => Option[Binding] = null
+  /**
+   * superficially tests for unification without checking for constraints
+   * This provides a early failure that can be used as a first level filtering
+   * This is the first part of the continuation version of unification
+   */
+  def canUnifyPart1(p1: Proposition, p2: Proposition, constraints: () => List[Proposition], initial: List[Proposition], g: GlobalInfo): Boolean =
+    {
+      reset {
+        // step 1: match tokens pairwise
+        val matched = matchTokens(p1, p2, g)
+        if (matched isEmpty) return false // fail to match the two propositions
+        // step 2: retrieve known values for variables that are already bound
+        val valued = revealTokenValues(matched.get)
+        // step 3: check for superficial inconsistencies. If there is, return None
+        if (!isPairConsistent(valued, g)) return false
+
+        shift {
+          k: (Unit => Option[Binding]) =>
+            {
+              unifyCont = k
+              true
+            }
+        }
+        unifyWithConstraints(valued, constraints(), initial, g.ontology)
+      }
+    }
+
+  def continueUnify() =
+    {
+      if (unifyCont == null) throw new BindingException("invalid continuation")
+      else {
+        unifyCont()
+      }
     }
 
   /**
