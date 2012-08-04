@@ -113,8 +113,7 @@ object TotalParser extends AbstractPlanParser {
           (step._1, newAct)
       }
 
-      // TODO: Compute causal links
-
+      // Compute causal links
       val links = r.links map {
         link =>
           val num1 = steps.indexWhere(_._1 == link._1)
@@ -128,7 +127,7 @@ object TotalParser extends AbstractPlanParser {
           new Link(num1, num2, cond, cond)
       }
 
-      // TODO: Compute orderings
+      // Compute orderings
       var orderings = r.ordering map {
         order =>
           val num1 = steps.indexWhere(_._1 == order._1)
@@ -136,6 +135,7 @@ object TotalParser extends AbstractPlanParser {
           (num1, num2)
       }
       
+      // Add orderings implied by causal links
       orderings = (links.map{l => (l.id1, l.id2)} ::: orderings).distinct
 
       new Recipe(r.name, steps map { _._2 }, links, orderings)

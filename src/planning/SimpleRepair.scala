@@ -5,12 +5,13 @@ import action._
 import logging._
 import structures._
 
-/** plan repairs for simple partial order plans
- * 
+/**
+ * plan repairs for simple partial order plans
+ *
  */
 object SimpleRepair extends Logging {
 
-  def refine(g:GlobalInfo)(p: Plan): List[Plan] =
+  def refine(g: GlobalInfo)(p: Plan): List[Plan] =
     {
       val kids =
         selectFlaw(p) match {
@@ -36,7 +37,7 @@ object SimpleRepair extends Logging {
       kids
     }
 
-  def repairThreat(p: Plan, threat: Threat, g:GlobalInfo): List[Plan] =
+  private[planning] def repairThreat(p: Plan, threat: Threat, g: GlobalInfo): List[Plan] =
     {
       // first, check if the threat is still valid
       if (verifyThreat(threat, p, g)) {
@@ -49,7 +50,7 @@ object SimpleRepair extends Logging {
             p.copy(
               id = g.newPlanID(),
               binding = newbind,
-              flaws = p.flaws - threat,
+              flaws = p.flaws filterNot (_ == threat),
               reason = reasonString,
               history = new Record("separate", threat.id, reasonString) :: p.history,
               parent = p)
@@ -87,14 +88,14 @@ object SimpleRepair extends Logging {
         // no history records necessary
         val newplan = p.copy(
           id = g.newPlanID(),
-          flaws = p.flaws - threat,
+          flaws = p.flaws filterNot (_ == threat),
           reason = "threat " + threat + " is no longer valid",
           parent = p)
         List(newplan)
       }
     }
 
-  def repairOpen(p: Plan, open: OpenCond, g:GlobalInfo): List[Plan] =
+  def repairOpen(p: Plan, open: OpenCond, g: GlobalInfo): List[Plan] =
     {
       reuseActions(p, open, g) ::: closedWorld(p, open, g) ::: insertAction(p, open, g)
     }
@@ -105,7 +106,7 @@ object SimpleRepair extends Logging {
       (p.flaws.head /: p.flaws.tail)((x, y) => if (x.priority <= y.priority) x else y)
     }
 
-  def insertAction(p: Plan, open: OpenCond, g:GlobalInfo): List[Plan] =
+  private[planning] def insertAction(p: Plan, open: OpenCond, g: GlobalInfo): List[Plan] =
     {
       var kids = List[Plan]()
       val init = p.initialState
@@ -141,7 +142,7 @@ object SimpleRepair extends Logging {
                       steps = newStep :: p.steps,
                       links = newLink :: p.links,
                       binding = newbind,
-                      flaws = newStep.preconditions.map { p => new OpenCond(highStep, p) } ::: (p.flaws - open),
+                      flaws = newStep.preconditions.map { p => new OpenCond(highStep, p) } ::: (p.flaws filterNot (_ == open)),
                       ordering = new Ordering(newordering ++ p.ordering.list),
                       reason = reasonString,
                       history = new Record("insert", highStep, reasonString) :: p.history,
@@ -165,9 +166,7 @@ object SimpleRepair extends Logging {
       kids
     }
 
- 
-
-  def verifyThreat(threat: Threat, p: Plan, g:GlobalInfo): Boolean =
+  private[planning] def verifyThreat(threat: Threat, p: Plan, g: GlobalInfo): Boolean =
     {
       val stepid = threat.id
       val link = threat.threatened
@@ -179,7 +178,7 @@ object SimpleRepair extends Logging {
    * tests if the specified action contains effects that would threaten any links
    * in the plan
    */
-  def detectThreats(step: Action, p: Plan, g:GlobalInfo): List[Threat] =
+  def detectThreats(step: Action, p: Plan, g: GlobalInfo): List[Threat] =
     {
       val before = p.ordering.possiblyBefore(step.id)
       val after = p.ordering.possiblyAfter(step.id)
@@ -204,7 +203,7 @@ object SimpleRepair extends Logging {
    * tests if the specified link is threatened by any actions in the plan
    *
    */
-  def detectThreats(newlink: Link, p: Plan, g:GlobalInfo): List[Threat] =
+  private[planning] def detectThreats(newlink: Link, p: Plan, g: GlobalInfo): List[Threat] =
     {
       val possible = p.ordering.possiblyBefore(newlink.id2)
 
@@ -226,7 +225,7 @@ object SimpleRepair extends Logging {
       threats
     }
 
-  def reuseActions(p: Plan, open: OpenCond, g:GlobalInfo): List[Plan] =
+  private[planning] def reuseActions(p: Plan, open: OpenCond, g: GlobalInfo): List[Plan] =
     {
       var kids = List[Plan]()
       val init = p.steps.find(_.id == 0).get.effects // initial state
@@ -240,7 +239,7 @@ object SimpleRepair extends Logging {
               debug("trying to reuse effect: " + stepId + ": " + effect + " for " + open.condition)
               if (p.binding.canUnify(effect, open.condition, g)) // filtering obviously impossible effects
               {
-                debug( "     TRUE \n")
+                debug("     TRUE \n")
                 val constraints = (oldstep.constraints ::: p.id2step(open.id).map(_.constraints).getOrElse(Nil)) filterNot { _.verb == 'neq }
 
                 p.binding.directUnify(effect, open.condition, constraints, init, g) match {
@@ -253,7 +252,7 @@ object SimpleRepair extends Logging {
                       id = g.newPlanID(),
                       links = newLink :: p.links,
                       binding = newbind,
-                      flaws = p.flaws - open,
+                      flaws = p.flaws filterNot (_ == open),
                       ordering = new Ordering(newOrdering ++ p.ordering.list),
                       reason = reasonString,
                       history = new Record("reuse", stepId, reasonString) :: p.history,
@@ -266,13 +265,13 @@ object SimpleRepair extends Logging {
                     kids = kid :: kids
                   case None => debug("reuse failed")
                 }
-              }
-              else debug("false")          }
+              } else debug("false")
+          }
       }
       kids
     }
 
-  def closedWorld(p: Plan, open: OpenCond, g:GlobalInfo): List[Plan] =
+  private[planning] def closedWorld(p: Plan, open: OpenCond, g: GlobalInfo): List[Plan] =
     {
       // needs to check if this implicity conversion would work  
       if (open.condition.verb != 'not) return Nil
@@ -280,7 +279,7 @@ object SimpleRepair extends Logging {
       val init = p.initialState
       var bindings = List(p.binding)
       for (icond <- init) {
-        bindings = bindings flatMap { x => x.separate(condition, icond, g)}
+        bindings = bindings flatMap { x => x.separate(condition, icond, g) }
       }
 
       bindings map { bind =>
@@ -291,7 +290,7 @@ object SimpleRepair extends Logging {
             id = g.newPlanID(),
             links = newLink :: p.links,
             binding = bind,
-            flaws = p.flaws - open,
+            flaws = p.flaws filterNot (_ == open),
             reason = reasonString,
             history = new Record("closed-world", open.id, reasonString) :: p.history,
             parent = p)
@@ -303,7 +302,7 @@ object SimpleRepair extends Logging {
       }
     }
 
-  def promote(p: Plan, threat: Threat, bind: Binding, g:GlobalInfo): Option[Plan] =
+  private[planning] def promote(p: Plan, threat: Threat, bind: Binding, g: GlobalInfo): Option[Plan] =
     {
       val promoted = threat.id
       val top = threat.threatened.id1
@@ -314,14 +313,14 @@ object SimpleRepair extends Logging {
           id = g.newPlanID(),
           ordering = p.ordering + ((promoted, top)),
           binding = bind,
-          flaws = p.flaws - threat,
+          flaws = p.flaws filterNot (_ == threat),
           reason = reasonString,
           history = new Record("promote", promoted, reasonString) :: p.history,
           parent = p))
       } else None
     }
 
-  def demote(p: Plan, threat: Threat, bind: Binding, g:GlobalInfo): Option[Plan] =
+  private[planning] def demote(p: Plan, threat: Threat, bind: Binding, g: GlobalInfo): Option[Plan] =
     {
       val demoted = threat.id
       val bottom = threat.threatened.id2
@@ -332,7 +331,7 @@ object SimpleRepair extends Logging {
           id = g.newPlanID(),
           ordering = p.ordering + ((bottom, demoted)),
           binding = bind,
-          flaws = p.flaws - threat,
+          flaws = p.flaws filterNot (_ == threat),
           reason = reasonString,
           history = new Record("demote", demoted, reasonString) :: p.history,
           parent = p))

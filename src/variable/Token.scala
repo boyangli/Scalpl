@@ -239,8 +239,8 @@ case class Variable(override val name: String, override val pType: String, val n
     case _ => false
   }
 
-  def bindTo(obj: PopObject, ontology:Ontology): VarSet = VarSet(ontology, obj, this)
-  def bindTo(vs: VarSet, ontology:Ontology) = vs.bindTo(this, ontology)
+  def bindTo(obj: PopObject)(implicit ontology:Ontology): VarSet = VarSet(obj, this)
+  def bindTo(vs: VarSet)(implicit ontology:Ontology) = vs.bindTo(this)
 
 }
 

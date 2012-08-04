@@ -20,7 +20,7 @@ object TestDecompPlanning extends App {
   println(g.ontology)
   var plan = g.initPlan()
   //DebugInfo.setDebug()
-  val parameter = new SearchParameter(50000)
+  val parameter = new SearchParameter(500000)
   val bestfirst = new BestFirstSearch[Plan](List(plan), DecompRepair.refine(g) _, complete _, eval _, parameter)
   /*
   g.actionTemplates.foreach { a =>
@@ -36,6 +36,8 @@ object TestDecompPlanning extends App {
 
   println(first.detailString())
   println(bestfirst.stats)
+  
+
   /*
   for (i <- 0 to 2) {
     var plans = DecompRepair.refine(g)(plan)

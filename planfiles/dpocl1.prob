@@ -4,7 +4,7 @@
 	(at tom:Person shop:Location)
 	(at jack:Person home:Location)
 )
-(goal
+(goal    
 	(murder-happened)
 	(dead jack)
 )

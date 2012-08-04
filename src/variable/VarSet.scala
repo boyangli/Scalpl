@@ -10,7 +10,7 @@ class VarSet(val equals: List[Token], val nonEquals: List[Token], val groundObj:
 
   //private var grounded = false
 
-  def bindTo(token: Token, ontology: Ontology): VarSet = token match {
+  def bindTo(token: Token)(implicit ontology: Ontology): VarSet = token match {
     case sym: PopObject =>
       {
         if (isGrounded) {
@@ -111,21 +111,19 @@ class VarSet(val equals: List[Token], val nonEquals: List[Token], val groundObj:
       ((equals.hashCode + 199) * 199 + (nonEquals.hashCode + 157) * 157) % 97 + 97
     }
 
-  def isCompatibleWith(that: VarSet): Boolean =
+  def isCompatibleWith(that: VarSet)(implicit ontology:Ontology): Boolean =
     {
-      // not sure if this commented portion is less efficient
-      //(that.equals intersect this.nonEquals).isEmpty && 
-      //(this.equals intersect that.nonEquals).isEmpty && 
       that.equals.forall(!this.nonEquals.contains(_)) && // none of the nonequals is contained in the equals 
         this.equals.forall(!that.nonEquals.contains(_)) &&
-        (!(this.isGrounded() && that.isGrounded() && this.groundObj != that.groundObj)) // each is bounded to a different symbol: failure
+        (!(this.isGrounded() && that.isGrounded() && this.groundObj != that.groundObj)) && // each is bounded to a different symbol: failure
+        ontology.compatible(this.pType, that.pType)
     }
 
   /**
    * warning: this methods does not check for incompatiability. The user must check it before applying this method
    * merges one varset with another varset
    */
-  def mergeWith(that: VarSet, ontology: Ontology): VarSet =
+  def mergeWith(that: VarSet)(implicit ontology: Ontology): VarSet =
     {
       new VarSet(this.equals ::: that.equals, this.nonEquals ::: that.nonEquals,
         if (this.isGrounded()) this.groundObj else that.groundObj, ontology.lower(this.pType, that.pType).get)
@@ -140,21 +138,21 @@ object VarSet {
   //    {
   //      new VarSet(vars.toList, List[Variable](), s)
   //    }
-  
-  def apply(token:Token): VarSet = token match {
-    case v:Variable => VarSet.apply(v)
-    case o:PopObject => VarSet.apply(o)
+
+  def apply(token: Token): VarSet = token match {
+    case v: Variable => VarSet.apply(v)
+    case o: PopObject => VarSet.apply(o)
   }
 
   def apply(variable: Variable): VarSet = {
     new VarSet(List(variable), List[Variable](), null, variable.pType)
   }
-  
-  def apply(obj:PopObject): VarSet = {
+
+  def apply(obj: PopObject): VarSet = {
     new VarSet(List[Variable](), List[Variable](), obj, obj.pType)
   }
 
-  def apply(ontology: Ontology, s: PopObject, vars: Variable*): VarSet = {
+  def apply(s: PopObject, vars: Variable*)(implicit ontology: Ontology): VarSet = {
 
     val varList = vars.toList
     val pType: String =
@@ -168,7 +166,7 @@ object VarSet {
   //    }
   //
 
-  def apply(ontology: Ontology, tokens: Token*): VarSet =
+  def apply(tokens: Token*)(implicit ontology: Ontology): VarSet =
     {
       val tlist = tokens.toList
       var symbols: List[PopObject] = List[PopObject]()

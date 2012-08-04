@@ -7,7 +7,7 @@
 	(want king sword)
 	(has king money:Object)
 )
-(goal
+(goal	
 	(acquire-complete)
 	(has warrior money)
 )
