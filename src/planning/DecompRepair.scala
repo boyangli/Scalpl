@@ -83,8 +83,7 @@ object DecompRepair extends Logging {
         val candidates = newSteps.map {
           template =>
 
-            if (template.name == "kill")
-            {
+            if (template.name == "kill") {
               //logging.DebugInfo.setDebug()
               //println("matching: " + template)
             }
@@ -92,7 +91,7 @@ object DecompRepair extends Logging {
             val a = false :: {
               p.steps filter (DecompReuse.canUnifyAction(_, template, parent, p, g))
             }
-            
+
             /*println("matched : " + a.map(_ match {
               case ac: Action => p.binding.substVarsShortString(ac)
               case _ => ""
@@ -152,7 +151,8 @@ object DecompRepair extends Logging {
 
                 // add existing orderings
                 newOrderings = newOrderings ++ p.ordering.list ++
-                  { insertedSteps flatMap { s => List((s.id, Constants.GOAL_ID), (Constants.INIT_ID, s.id)) } }
+                  p.ordering.list.filter(x => x._1 == parent.id).flatMap { pair => insertedSteps map { s => (s.id, pair._2) } } ++
+                  p.ordering.list.filter(x => x._2 == parent.id).flatMap { pair => insertedSteps map { s => (pair._2, s.id) } }
 
                 // compute new causal links
                 val newLinks = findCausalLinks(recipe.links, children, existingStepIds, p.binding, p, g)
@@ -313,7 +313,8 @@ object DecompRepair extends Logging {
             val id1 = newSteps(order._1).id
             val id2 = newSteps(order._2).id
             (id1, id2)
-        }) ++ (newSteps flatMap { s => List((s.id, Constants.GOAL_ID), (Constants.INIT_ID, s.id)) })
+        }) ++ p.ordering.list.filter(x => x._1 == parent.id).flatMap { pair => newSteps map { s => (s.id, pair._2) } } ++
+          p.ordering.list.filter(x => x._2 == parent.id).flatMap { pair => newSteps map { s => (pair._2, s.id) } }
 
         val undecomp = newSteps filter { _.composite } map { s => new UnDecomposed(s.id) }
         val open = newSteps flatMap { step =>
