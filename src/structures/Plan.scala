@@ -1,20 +1,23 @@
-package plan
+package structures
 import variable._
 import analogy._
+import action._
+import planning._
+import parsing.Parsible
 
 class PlanLike(
-    val steps: List[Action],
-    val links: List[Link],
-    val ordering: Ordering,
-    val binding: Binding) {
+  val steps: List[Action],
+  val links: List[Link],
+  val ordering: Ordering,
+  val binding: Binding) {
 }
 
 case class ProtoFrame(
-    val name: String,
-    override val steps: List[Action],
-    override val links: List[Link],
-    override val ordering: Ordering,
-    override val binding: Binding) extends PlanLike(steps, links, ordering, binding) {
+  val name: String,
+  override val steps: List[Action],
+  override val links: List[Link],
+  override val ordering: Ordering,
+  override val binding: Binding) extends PlanLike(steps, links, ordering, binding) {
 
   override def toString(): String = "<Frame of " + name + " #steps=" + steps.length + ">"
 
@@ -26,7 +29,7 @@ case class ProtoFrame(
       var desc = "<Frame of " + name + ">\n"
 
       val order = ordering.topsort()
-      for (i <- order if i != 0 && i != Global.GOAL_ID) {
+      for (i <- order if i != 0 && i != Constants.GOAL_ID) {
         steps.find(_.id == i) match {
           case Some(x) => desc += "[" + i + "] " + binding.substVarsString(x) + "\n"
           case _ => ""
@@ -37,18 +40,17 @@ case class ProtoFrame(
 }
 
 case class Plan(
-    val id: Int,
-    override val steps: List[Action],
-    override val links: List[Link],
-    override val ordering: Ordering,
-    override val binding: Binding,
-    val flaws: List[Flaw],
-    val reason: String,
-    val history: List[Record],
-    val matchings: List[Matching],
-    val parent: Plan,
-    var children: List[Plan],
-    val stepCount: Int = 0) extends PlanLike(steps, links, ordering, binding) {
+  val id: Int,
+  override val steps: List[Action],
+  override val links: List[Link],
+  override val ordering: Ordering,
+  override val binding: Binding,
+  val flaws: List[Flaw],
+  val reason: String,
+  val history: List[Record],
+  val parent: Plan,
+  var children: List[Plan],
+  val stepCount: Int = 0) extends PlanLike(steps, links, ordering, binding) with Parsible {
 
   override def toString(): String = "<Plan[" + id + "] #steps=" + stepCount + ", #flaws=" + flaws.length + ">"
 
@@ -72,7 +74,7 @@ case class Plan(
       //println(ordering.allIDs)
       val order = ordering.topsort()
       //print("order "+ order)
-      for (i <- order if i != 0 && i != Global.GOAL_ID) {
+      for (i <- order if i != Constants.INIT_ID && i != Constants.GOAL_ID) {
         steps.find(_.id == i) match {
           case Some(x) => desc += "[" + i + "] " + binding.substVarsString(x) + "\n"
           case _ => ""
@@ -81,14 +83,16 @@ case class Plan(
       desc
     }
 
-  def getEmpty(): Plan =
+  /*
+  def getEmpty(g:GlobalInfo): Plan =
     {
-      val id = Global.newPlanID()
+      val id = g.newPlanID()
       new Plan(id, List[Action](), List[Link](), new Ordering(), new Binding(), List[Flaw](), "",
-        List[Record](), List[Matching](), null, null)
+        List[Record](), null, null)
     }
+    */
 
-  def parsibleString(): String =
+  override def toParseString(): String =
     {
       var answer = "(objects " + collectObjects.mkString(" ") + ")\n" // objects
       answer += "(initial-state " + initialState.map(_.toShortString).mkString(" ") + ")\n" // initial state
@@ -96,7 +100,7 @@ case class Plan(
       val order = ordering.topsort()
       var stepString = ""
 
-      for (i <- order if i != 0 && i != Global.GOAL_ID) {
+      for (i <- order if i != Constants.INIT_ID && i != Constants.GOAL_ID) {
         steps.find(_.id == i) match {
           case Some(x) => stepString += "[" + i + "] " + binding.substVarsShortString(x) + "\n"
           case _ => ""
@@ -135,18 +139,19 @@ case class Plan(
   def id2step(id: Int): Option[Action] = steps.find { _.id == id }
 
   def initialState() = steps.find(_.id == 0).get.effects // initial state
-  def goalState() = steps.find(_.id == Global.GOAL_ID).get.preconditions // goal state
+  def goalState() = steps.find(_.id == Constants.GOAL_ID).get.preconditions // goal state
 }
 
 object Plan {
 
   def apply(id: Int, steps: List[Action], links: List[Link], ordering: Ordering, binding: Binding, flaws: List[Flaw], reason: String,
-            parent: Plan, children: List[Plan]) =
-    new Plan(id, steps, links, ordering, binding, flaws, reason, List[Record](), List[Matching](), parent, children)
+    parent: Plan, children: List[Plan]) =
+    new Plan(id, steps, links, ordering, binding, flaws, reason, List[Record](), parent, children, 
+        steps filterNot{_.dummy} size)
 
-  def getEmpty(): Plan =
+  def getEmpty(global:GlobalInfo): Plan =
     {
-      val id = Global.newPlanID()
-      new Plan(id, List[Action](), List[Link](), new Ordering(), new Binding(), List[Flaw](), "", List[Record](), List[Matching](), null, null)
+      val id = global.newPlanID()
+      new Plan(id, List[Action](), List[Link](), new Ordering(), new Binding(), List[Flaw](), "", List[Record](), null, null)
     }
 }

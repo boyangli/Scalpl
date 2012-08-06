@@ -9,8 +9,11 @@ import com.mxgraph.util._
 import com.mxgraph.view.mxGraph
 import com.mxgraph.model._
 import java.awt.Font
-import plan._
+import planning._
+import structures._
+
 import scala.collection.mutable.HashMap
+import action._
 
 class Graph {
 
@@ -220,11 +223,11 @@ class Graph {
       plan.steps foreach {
         step =>
           val name = {
-            if (step.id == 0) "Init"
-            else if (step.id == Global.GOAL_ID) "Goal"
+            if (step.id == Constants.INIT_ID) "Init"
+            else if (step.id == Constants.GOAL_ID) "Goal"
             else step.id + ". " + plan.binding.substVarsString(step).replace("'", "")
           }
-          if (step.id == Global.GOAL_ID)
+          if (step.id == Constants.GOAL_ID)
             cellArr(count - 1) = makeCell(name)
           else cellArr(step.id) = makeCell(name)
       }
@@ -244,11 +247,11 @@ class Graph {
 
       var edges = hash.keySet map { key =>
         val name = key._1 + "->" + {
-          if (key._2 == Global.GOAL_ID) "goal" else key._2
+          if (key._2 == Constants.GOAL_ID) "goal" else key._2
         } + " " + hash.get(key).get
         val edge = makeEdge(name.replace("'", ""))
         val source = cellArr(key._1)
-        val target = if (key._2 == Global.GOAL_ID) cellArr(count - 1) else cellArr(key._2)
+        val target = if (key._2 == Constants.GOAL_ID) cellArr(count - 1) else cellArr(key._2)
         graph.addEdge(edge, parent, source, target, null)
         edge
       }
@@ -260,11 +263,11 @@ class Graph {
       val tempedges = temporals map {
         pair =>
           val name = pair._1 + "->" + {
-            if (pair._2 == Global.GOAL_ID) "goal" else pair._2
+            if (pair._2 == Constants.GOAL_ID) "goal" else pair._2
           }
           val edge = makeEdge(name)
           val source = cellArr(pair._1)
-          val target = if (pair._2 == Global.GOAL_ID) cellArr(count - 1) else cellArr(pair._2)
+          val target = if (pair._2 == Constants.GOAL_ID) cellArr(count - 1) else cellArr(pair._2)
           graph.addEdge(edge, parent, source, target, null)
           edge
       }

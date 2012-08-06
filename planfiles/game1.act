@@ -1,0 +1,43 @@
+(action move (?p1:Person ?place1:Location ?place2:Location)
+	(actor ?p1)
+	(constraints (neq ?place1 ?place2))
+	(preconditions (not (at ?p1 ?place2)) (at ?p1 ?place1))
+	(effects (not (at ?p1 ?place1)) (at ?p1 ?place2))
+	)
+
+(action kill (?p1:Person ?p2:Person ?place:Location)
+     (actor ?p1)
+	 (constraints (neq ?p1 ?p2))	 
+	 (preconditions (at ?p1 ?place) (at ?p2 ?place) (not (dead ?p2)))
+	 (effects (dead ?p2)) 
+	 )
+	 
+(action drop (?p1:Monster ?o:Object ?place:Location)
+     (actor ?p1)
+	 (constraints )	 
+	 (preconditions (at ?p1 ?place) (has ?p1 ?o) (dead ?p1))
+	 (effects (at ?o ?place)) 
+	 )
+
+(action pick-up (?p1:Person ?o:Object ?place:Location)
+	(actor ?p1)
+	 (constraints )	 
+	 (preconditions (at ?p1 ?place) (at ?o ?place) )
+	 (effects (not(at ?o ?place)) (has ?p1 ?o)) 
+	 )
+	 
+(action exchange (?p1:Person ?p2:Person ?o1:Object ?o2:Object ?place:Location)
+	(actor ?p1)
+	(constraints (neq ?p1 ?p2) (neq ?o1 ?o2))
+	(preconditions (at ?p1 ?place) (at ?p2 ?place) (has ?p1 ?o1) (has ?p2 ?o2) (want ?p2 ?o1))
+	(effects (not (has ?p1 ?o1)) (not (has ?p2 ?o2)) (has ?p1 ?o2) (has ?p2 ?o1) (not (want ?p2 ?o1)))
+	)
+	
+(composite action kill-acquire (?p1:Player ?p2:Monster ?place1:Location ?place2:Location ?object1:Object)
+	(actor ?p1)
+	(constraints (neq ?p1 ?p2) (neq ?place1 ?place2))
+	(preconditions )
+	(effects (acquire-complete))
+	)
+
+	

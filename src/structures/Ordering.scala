@@ -1,5 +1,6 @@
-package plan
+package structures
 import variable._
+import planning._
 
 class Ordering(val list: Set[(Int, Int)]) {
 
@@ -136,7 +137,7 @@ class Ordering(val list: Set[(Int, Int)]) {
         }
         if (tail != Nil) {
           head = tail.head
-          rest = rest - head
+          rest = rest filterNot (_ == head)
           //println("Rest: " + rest)
         }
       }
@@ -146,7 +147,7 @@ class Ordering(val list: Set[(Int, Int)]) {
   override def toString(): String =
     {
       list map { pair =>
-        if (pair._2 == Global.GOAL_ID) (pair._1.toString, "goal")
+        if (pair._2 == Constants.GOAL_ID) (pair._1.toString, "goal")
         else pair
       } mkString (", ")
     }
@@ -154,7 +155,7 @@ class Ordering(val list: Set[(Int, Int)]) {
   def toFileString(): String =
     {
       list map { pair =>
-        if (pair._2 == Global.GOAL_ID) (pair._1.toString, "goal")
+        if (pair._2 == Constants.GOAL_ID) (pair._1.toString, "goal")
         else pair
       } mkString (" ")
     }

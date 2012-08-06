@@ -8,7 +8,7 @@ sealed abstract class TopTerm {
   override def hashCode(): Int
 
   def canEqual(o: Any): Boolean
-  def toShortString():String
+  def toShortString(): String
 }
 
 case class Proposition(val verb: Symbol, val termlist: List[TopTerm]) extends TopTerm {
@@ -16,6 +16,7 @@ case class Proposition(val verb: Symbol, val termlist: List[TopTerm]) extends To
   //def this(verb: PopSymbol, list: List[TopTerm]) = this(verb, TermList(list))
 
   def length = termlist.length + 1
+  
   override def toString(): String = {
     if (termlist.length == 0)
       "Prop: " + verb
@@ -67,10 +68,42 @@ case class Proposition(val verb: Symbol, val termlist: List[TopTerm]) extends To
       list
     }
 
+  /**
+   * Substitutes all instances of variable v1 with variable v2 in this proposition
+   * This method can handle high-order propositions.
+   *
+   */
+  def substitute(v1: Variable, v2: Variable): Proposition =
+    {
+      Proposition(verb, termlist map {
+        _ match {
+          case prop: Proposition => prop.substitute(v1, v2)
+          case x => if (x == v1) v2 else x
+        }
+      })
+    }
+
+  /**
+   * Substitutes all instances of variable v with object o in this proposition
+   * This method can handle high-order propositions.
+   *
+   */
+  def substitute(v: Variable, o: PopObject): Proposition =
+    {
+      Proposition(verb, termlist map {
+        _ match {
+          case prop: Proposition => prop.substitute(v, o)
+          case x => if (x == v) o else x
+        }
+      })
+    }
+
+  /*
   def substitute(v: Variable, o: PopObject): Proposition =
     {
       Proposition(verb, termlist.map(x => if (x == v) o else x))
     }
+    */
 
   def equalsIgnoreVars(that: Proposition): Boolean =
     {
@@ -93,7 +126,8 @@ case class Proposition(val verb: Symbol, val termlist: List[TopTerm]) extends To
         _ match {
           case v: Variable => v.instantiate(number)
           case p: Proposition => p.instantiate(number)
-          case x => x
+          case s: PopObject => s
+          case _ => throw new Exception("weird content in term list")
         }
       })
     }
@@ -107,8 +141,8 @@ case class Proposition(val verb: Symbol, val termlist: List[TopTerm]) extends To
 }
 
 object Proposition {
-  def apply(verb:Symbol) = new Proposition(verb, List[TopTerm]())
-  def parse(string: String): Proposition = ActionParser.parseProposition(string)//ActionParser.parseAll(ActionParser.prop, string).get
+  def apply(verb: Symbol) = new Proposition(verb, List[TopTerm]())
+  def parse(string: String): Proposition = ActionParser.parseProposition(string) //ActionParser.parseAll(ActionParser.prop, string).get
 
 }
 
@@ -140,7 +174,7 @@ object Proposition {
  * Token class. Super class of PopSymbol and Variable
  *
  */
-sealed abstract class Token (val name:String) extends TopTerm {
+sealed abstract class Token(val name: String) extends TopTerm {
   val pType: String
   def toShortString(): String
 }
@@ -180,7 +214,7 @@ case class Variable(override val name: String, override val pType: String, val n
 
   def this(name: String, varType: String) = this(name, varType, 0)
 
-  override def toString: String =
+  override def toString(): String =
     if (number == 0) "v-" + name + ":" + pType
     else "v-" + name + "-" + number + ":" + pType
 
@@ -188,9 +222,9 @@ case class Variable(override val name: String, override val pType: String, val n
     if (number == 0) name
     else name + "-" + number
 
-  def fullName = if (number == 0) "v-" + name 
-    else "v-" + name + "-" + number
-    
+  def fullName = if (number == 0) "v-" + name
+  else "v-" + name + "-" + number
+
   def instantiate(number: Int) = new Variable(name, pType, number)
 
   override def equals(o: Any): Boolean = o match {
@@ -205,8 +239,8 @@ case class Variable(override val name: String, override val pType: String, val n
     case _ => false
   }
 
-  def bindTo(obj: PopObject): VarSet = VarSet(obj, this)
-  def bindTo(vs: VarSet) = vs.bindTo(this)
+  def bindTo(obj: PopObject)(implicit ontology:Ontology): VarSet = VarSet(obj, this)
+  def bindTo(vs: VarSet)(implicit ontology:Ontology) = vs.bindTo(this)
 
 }
 
@@ -219,7 +253,7 @@ object Variable {
  * Story Object. A variable must bind to an object
  *
  */
-case class PopObject(override val name:String, override val pType: String) extends Token(name) {
+case class PopObject(override val name: String, override val pType: String) extends Token(name) {
   override def toString() = name + ":" + pType
   override def toShortString() = name
 

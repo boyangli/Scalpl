@@ -1,7 +1,9 @@
-package plan
-import parsing.TotalParser
+package planning
+import parsing._
 import variable._
 import bestfirst._
+import structures._
+import planning._
 
 object Main {
   def main(args: Array[String]) {
@@ -18,12 +20,12 @@ object Main {
         return
     }
 
-    Global.init(actions, problem)
+    val g = new GlobalInfo(actions, problem)
     //Global.setDebug()
-    var plan = Global.initPlan()
+    var plan = g.initPlan()
     //Global.setTrace()
     val parameter = new SearchParameter(50000)
-    val bestfirst = new BestFirstSearch[Plan](List(plan), FlawRepair.refine _, complete _, eval _, parameter)
+    val bestfirst = new BestFirstSearch[Plan](List(plan), SimpleRepair.refine(g) _, complete _, eval _, parameter)
 
     try {
       val result = bestfirst.search()
@@ -31,7 +33,7 @@ object Main {
       println("Found plan: " + result)
 //      println(result.planString())
       println(result.detailString())
-      println("parsible:" + result.parsibleString())
+      println("parsible:" + result.toParseString())
 
 
     } catch {
@@ -44,14 +46,14 @@ object Main {
 
   }
 
-  def plan(actionFile: String, problemFile: String): (Option[Plan], SearchStats) = {
+  def pocl(actionFile: String, problemFile: String): (Option[Plan], SearchStats) = {
     val (problem, actions) = TotalParser.parse(problemFile, actionFile)
 
-    Global.init(actions, problem)
-    var plan = Global.initPlan()
+    val g = new GlobalInfo(actions, problem)
+    var plan = g.initPlan()
     //Global.debug = true
     val parameter = new SearchParameter(500)
-    val bestfirst = new BestFirstSearch[Plan](List(plan), FlawRepair.refine _, complete _, eval _, parameter)
+    val bestfirst = new BestFirstSearch[Plan](List(plan), SimpleRepair.refine(g) _, complete _, eval _, parameter)
 
     val first =
       try {
@@ -64,6 +66,27 @@ object Main {
 
     (first, bestfirst.stats)
   }
+  
+  def dpocl(actionFile:String, problemFile:String, decompFile:String): (Option[Plan], SearchStats) = {
+    val (problem, actions, recipes) = TotalParser.decompParse(problemFile, actionFile, decompFile)
+    //val recipes = DecompParser.readFile(decompFile)
+    val g = new DecompGlobal(actions, problem, recipes)
+    var plan = g.initPlan()
+    //Global.debug = true
+    val parameter = new SearchParameter(500)
+    val bestfirst = new BestFirstSearch[Plan](List(plan), DecompRepair.refine(g) _, complete _, eval _, parameter)
+
+    val first =
+      try {
+        Some(bestfirst.search())
+      } catch {
+        case e: Exception =>
+          println("Search Failed: " + e.getMessage)
+          None
+      }
+
+    (first, bestfirst.stats)
+  } 
 
   def complete(p: Plan): Boolean = p.flaws == Nil
 

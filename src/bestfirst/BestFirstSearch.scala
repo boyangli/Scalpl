@@ -1,7 +1,9 @@
 package bestfirst
 
 import scala.collection.mutable.PriorityQueue
-import plan._
+import planning._
+import structures._
+
 import logging._
 
 class BestFirstSearch[N] (

@@ -2,7 +2,9 @@ package analogy
 
 import variable._
 import logging._
-import plan._
+import planning._
+import structures._
+import action._
 
 object AnalogyEngine extends Logging {
 

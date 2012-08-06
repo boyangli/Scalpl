@@ -1,6 +1,8 @@
 package gui
 import swing._
 import event._
+import planning._
+import structures._
 import com.mxgraph.swing.mxGraphComponent
 import com.mxgraph.view.mxGraph
 
@@ -75,7 +77,7 @@ object BasicSwing extends SimpleSwingApplication {
     val dir = "./planfiles/"
     val probFile = dir + probName + ".prob"
     val actionFile = dir + probName + ".act"
-    val (p, stats) = plan.Main.plan(actionFile, probFile)
+    val (p, stats) = planning.Main.pocl(actionFile, probFile)
     var statusText = stats.toString()
     if (p.isDefined) {
       graph.showPlan(p.get)

@@ -1,18 +1,26 @@
-package plan
-import variable._
-import logging._
-object FlawRepair extends Logging {
+package planning
 
-  def refine(p: Plan): List[Plan] =
+import variable._
+import action._
+import logging._
+import structures._
+
+/**
+ * plan repairs for simple partial order plans
+ *
+ */
+object SimpleRepair extends Logging {
+
+  def refine(g: GlobalInfo)(p: Plan): List[Plan] =
     {
       val kids =
         selectFlaw(p) match {
           case open: OpenCond =>
             trace("repairing: " + open)
-            repairOpen(p, open)
+            repairOpen(p, open, g)
           case threat: Threat =>
             trace("repairing: " + threat)
-            repairThreat(p, threat)
+            repairThreat(p, threat, g)
           case _ => throw new Exception("A flaw with no known repairs! " + p.flaws)
         }
       p.children = kids
@@ -29,20 +37,20 @@ object FlawRepair extends Logging {
       kids
     }
 
-  def repairThreat(p: Plan, threat: Threat): List[Plan] =
+  private[planning] def repairThreat(p: Plan, threat: Threat, g: GlobalInfo): List[Plan] =
     {
       // first, check if the threat is still valid
-      if (verifyThreat(threat, p)) {
+      if (verifyThreat(threat, p, g)) {
 
         // first option: separate the two conflicting conditions
-        val separated = p.binding.separate(threat.effect.negate, threat.threatened.precondition) map {
+        val separated = p.binding.separate(threat.effect.negate, threat.threatened.precondition, g) map {
           newbind =>
             debug("Separated " + threat.effect.negate + " and " + threat.threatened.precondition)
             val reasonString = "separating " + threat.effect + " and " + threat.threatened.precondition
             p.copy(
-              id = Global.newPlanID(),
+              id = g.newPlanID(),
               binding = newbind,
-              flaws = p.flaws - threat,
+              flaws = p.flaws filterNot (_ == threat),
               reason = reasonString,
               history = new Record("separate", threat.id, reasonString) :: p.history,
               parent = p)
@@ -64,11 +72,11 @@ object FlawRepair extends Logging {
         //here we do not have to add the neq constraints again.
         // those constraints are added to the binding when steps are added into the plan
         val constraints = threatStep.pureConstraints ::: step1.pureConstraints ::: step2.pureConstraints
-        val newbind = p.binding.unify(threat.effect.negate, threat.threatened.precondition, constraints, p.initialState)
+        val newbind = p.binding.unify(threat.effect.negate, threat.threatened.precondition, constraints, p.initialState, g)
         val unified = newbind match {
           case Some(nbind) => // unification successful
-            promote(p, threat, nbind).toList :::
-              demote(p, threat, nbind).toList
+            promote(p, threat, nbind, g).toList :::
+              demote(p, threat, nbind, g).toList
           case None => Nil
           // unification impossible. not need to demote or promote.
           // separation must be possible. but it would have been done earlier, so we return nil here
@@ -79,17 +87,17 @@ object FlawRepair extends Logging {
         // the threat is not valid anymore, just remove it
         // no history records necessary
         val newplan = p.copy(
-          id = Global.newPlanID(),
-          flaws = p.flaws - threat,
+          id = g.newPlanID(),
+          flaws = p.flaws filterNot (_ == threat),
           reason = "threat " + threat + " is no longer valid",
           parent = p)
         List(newplan)
       }
     }
 
-  def repairOpen(p: Plan, open: OpenCond): List[Plan] =
+  def repairOpen(p: Plan, open: OpenCond, g: GlobalInfo): List[Plan] =
     {
-      reuseActions(p, open) ::: closedWorld(p, open) ::: insertAction(p, open)
+      reuseActions(p, open, g) ::: closedWorld(p, open, g) ::: insertAction(p, open, g)
     }
 
   def selectFlaw(p: Plan): Flaw =
@@ -98,43 +106,44 @@ object FlawRepair extends Logging {
       (p.flaws.head /: p.flaws.tail)((x, y) => if (x.priority <= y.priority) x else y)
     }
 
-  def insertAction(p: Plan, open: OpenCond): List[Plan] =
+  private[planning] def insertAction(p: Plan, open: OpenCond, g: GlobalInfo): List[Plan] =
     {
       var kids = List[Plan]()
       val init = p.initialState
       val highStep = p.stepCount + 1
 
-      Global.actionTemplates foreach {
+      g.actionTemplates foreach {
         template =>
           // instantiate this template
           val newStep = template.instantiate(highStep)
           val neqs = newStep.constraints filter { _.verb == 'neq }
-          val neqbind = p.binding.addNeqs(neqs)
+          val neqbind = p.binding.addNeqs(neqs, g.ontology)
           newStep.effects foreach {
             effect =>
-              if (neqbind.canUnify(effect, open.condition)) // filtering obviously impossible effects
+              // changed to a delimited continuation version. Seems to be a little faster - Aug 04 Albert
+              // must respect constraints from both steps
+              def allConstraints() = ((p.id2step(open.id) map (_.constraints) getOrElse (Nil)) ::: (newStep.constraints)) filterNot (_.verb == 'neq)
+              if (neqbind.canUnifyPart1(effect, open.condition, allConstraints _, init, g)) // filtering obviously impossible effects
               {
-                // must respect constraints from both steps
-                val allConstraints = ((p.id2step(open.id) map (_.constraints) getOrElse (Nil)) ::: (newStep.constraints)) filterNot (_.verb == 'neq)
 
                 debug("trying inserting step " + newStep + " with effect: " + effect + " for " + open.condition)
-                neqbind.directUnify(effect, open.condition, allConstraints, init) match {
+                neqbind.continueUnify() match {
                   case Some(newbind: Binding) =>
                     debug("unification succeeds")
                     var newordering =
-                      if (open.id == Global.GOAL_ID)
+                      if (open.id == Constants.GOAL_ID)
                         Set(((highStep, open.id)), ((0, highStep)))
-                      else Set(((highStep, open.id)), ((0, highStep)), (highStep, Global.GOAL_ID))
+                      else Set(((highStep, open.id)), ((0, highStep)), (highStep, Constants.GOAL_ID))
 
                     val newLink = new Link(highStep, open.id, effect, open.condition)
 
                     val reasonString = "Inserted action " + highStep + " to establish " + open.condition
                     val kid = p.copy(
-                      id = Global.newPlanID(),
+                      id = g.newPlanID(),
                       steps = newStep :: p.steps,
                       links = newLink :: p.links,
                       binding = newbind,
-                      flaws = newStep.preconditions.map { p => new OpenCond(highStep, p) } ::: (p.flaws - open),
+                      flaws = newStep.preconditions.map { p => new OpenCond(highStep, p) } ::: (p.flaws filterNot (_ == open)),
                       ordering = new Ordering(newordering ++ p.ordering.list),
                       reason = reasonString,
                       history = new Record("insert", highStep, reasonString) :: p.history,
@@ -143,7 +152,7 @@ object FlawRepair extends Logging {
 
                     //kid.stepCount += 1
 
-                    val threats = detectThreats(newStep, kid) ::: detectThreats(newLink, kid)
+                    val threats = detectThreats(newStep, kid, g) ::: detectThreats(newLink, kid, g)
 
                     if (threats != Nil) // add detected threats into the plan
                       kids = kid.copy(flaws = threats ::: kid.flaws) :: kids
@@ -158,21 +167,19 @@ object FlawRepair extends Logging {
       kids
     }
 
- 
-
-  def verifyThreat(threat: Threat, p: Plan): Boolean =
+  private[planning] def verifyThreat(threat: Threat, p: Plan, g: GlobalInfo): Boolean =
     {
       val stepid = threat.id
       val link = threat.threatened
       val possible = p.ordering.possiblyBefore(link.id2)
-      possible.contains(stepid) && p.binding.canUnify(threat.effect.negate, link.precondition)
+      possible.contains(stepid) && p.binding.canUnify(threat.effect.negate, link.precondition, g)
     }
 
   /**
    * tests if the specified action contains effects that would threaten any links
    * in the plan
    */
-  def detectThreats(step: Action, p: Plan): List[Threat] =
+  def detectThreats(step: Action, p: Plan, g: GlobalInfo): List[Threat] =
     {
       val before = p.ordering.possiblyBefore(step.id)
       val after = p.ordering.possiblyAfter(step.id)
@@ -185,7 +192,7 @@ object FlawRepair extends Logging {
           step.effects filter { effect =>
             val negated = effect.negate // compute a negated proposition
             // make use of lazy evaluation to save computation
-            p.binding.canEqual(negated, l.precondition) && p.binding.canUnify(negated, l.precondition)
+            p.binding.canEqual(negated, l.precondition) && p.binding.canUnify(negated, l.precondition, g)
           } map { effect =>
             new Threat(step.id, effect, l)
           }
@@ -197,7 +204,7 @@ object FlawRepair extends Logging {
    * tests if the specified link is threatened by any actions in the plan
    *
    */
-  def detectThreats(newlink: Link, p: Plan): List[Threat] =
+  private[planning] def detectThreats(newlink: Link, p: Plan, g: GlobalInfo): List[Threat] =
     {
       val possible = p.ordering.possiblyBefore(newlink.id2)
 
@@ -209,7 +216,7 @@ object FlawRepair extends Logging {
           step.effects filter { effect =>
             val negated = effect.negate // compute a negated proposition
             // make use of lazy evaluation to save computation
-            p.binding.canEqual(negated, newlink.precondition) && p.binding.canUnify(negated, newlink.precondition)
+            p.binding.canEqual(negated, newlink.precondition) && p.binding.canUnify(negated, newlink.precondition, g)
           } map {
             effect =>
               new Threat(step.id, effect, newlink)
@@ -219,7 +226,7 @@ object FlawRepair extends Logging {
       threats
     }
 
-  def reuseActions(p: Plan, open: OpenCond): List[Plan] =
+  private[planning] def reuseActions(p: Plan, open: OpenCond, g: GlobalInfo): List[Plan] =
     {
       var kids = List[Plan]()
       val init = p.steps.find(_.id == 0).get.effects // initial state
@@ -230,41 +237,41 @@ object FlawRepair extends Logging {
 
           oldstep.effects foreach {
             effect =>
-              if (p.binding.canUnify(effect, open.condition)) // filtering obviously impossible effects
+              debug("trying to reuse effect: " + stepId + ": " + effect + " for " + open.condition)
+              // changed to a delimited continuation version. Seems to be a little faster - Aug 04 Albert
+              def constraints() = (oldstep.constraints ::: p.id2step(open.id).map(_.constraints).getOrElse(Nil)) filterNot { _.verb == 'neq }
+              if (p.binding.canUnifyPart1(effect, open.condition, constraints, init, g)) // filtering obviously impossible effects
               {
-                debug("trying to reuse effect: " + stepId + ": " + effect + " for " + open.condition)
-                val constraints = (oldstep.constraints ::: p.id2step(open.id).map(_.constraints).getOrElse(Nil)) filterNot { _.verb == 'neq }
-
-                p.binding.directUnify(effect, open.condition, constraints, init) match {
+                p.binding.continueUnify() match {
                   case Some(newbind: Binding) =>
                     debug("reuse succeeds")
                     var newOrdering = Set(((stepId, open.id)))
                     val newLink = new Link(stepId, open.id, effect, open.condition)
                     val reasonString = "Reused action " + stepId + " to establish " + open.condition
                     var kid = p.copy(
-                      id = Global.newPlanID(),
+                      id = g.newPlanID(),
                       links = newLink :: p.links,
                       binding = newbind,
-                      flaws = p.flaws - open,
+                      flaws = p.flaws filterNot (_ == open),
                       ordering = new Ordering(newOrdering ++ p.ordering.list),
                       reason = reasonString,
                       history = new Record("reuse", stepId, reasonString) :: p.history,
                       parent = p)
 
-                    val threats = detectThreats(newLink, kid)
+                    val threats = detectThreats(newLink, kid, g)
                     if (threats != Nil) // add detected threats into the plan
                       kid = kid.copy(flaws = threats ::: kid.flaws)
 
                     kids = kid :: kids
                   case None => debug("reuse failed")
                 }
-              }
+              } else debug("false")
           }
       }
       kids
     }
 
-  def closedWorld(p: Plan, open: OpenCond): List[Plan] =
+  private[planning] def closedWorld(p: Plan, open: OpenCond, g: GlobalInfo): List[Plan] =
     {
       // needs to check if this implicity conversion would work  
       if (open.condition.verb != 'not) return Nil
@@ -272,7 +279,7 @@ object FlawRepair extends Logging {
       val init = p.initialState
       var bindings = List(p.binding)
       for (icond <- init) {
-        bindings = bindings flatMap { x => x.separate(condition, icond) }
+        bindings = bindings flatMap { x => x.separate(condition, icond, g) }
       }
 
       bindings map { bind =>
@@ -280,14 +287,14 @@ object FlawRepair extends Logging {
         val reasonString = "Closed World Assumption: " + open.condition
         var kid =
           p.copy(
-            id = Global.newPlanID(),
+            id = g.newPlanID(),
             links = newLink :: p.links,
             binding = bind,
-            flaws = p.flaws - open,
+            flaws = p.flaws filterNot (_ == open),
             reason = reasonString,
             history = new Record("closed-world", open.id, reasonString) :: p.history,
             parent = p)
-        val threats = detectThreats(newLink, kid)
+        val threats = detectThreats(newLink, kid, g)
         if (threats != Nil) // add detected threats into the plan
           kid = kid.copy(flaws = threats ::: kid.flaws)
 
@@ -295,7 +302,7 @@ object FlawRepair extends Logging {
       }
     }
 
-  def promote(p: Plan, threat: Threat, bind: Binding): Option[Plan] =
+  private[planning] def promote(p: Plan, threat: Threat, bind: Binding, g: GlobalInfo): Option[Plan] =
     {
       val promoted = threat.id
       val top = threat.threatened.id1
@@ -303,17 +310,17 @@ object FlawRepair extends Logging {
         debug { "promoted step " + promoted + " before " + top }
         val reasonString = "promoting step " + promoted + " before " + top
         new Some(p.copy(
-          id = Global.newPlanID(),
+          id = g.newPlanID(),
           ordering = p.ordering + ((promoted, top)),
           binding = bind,
-          flaws = p.flaws - threat,
+          flaws = p.flaws filterNot (_ == threat),
           reason = reasonString,
           history = new Record("promote", promoted, reasonString) :: p.history,
           parent = p))
       } else None
     }
 
-  def demote(p: Plan, threat: Threat, bind: Binding): Option[Plan] =
+  private[planning] def demote(p: Plan, threat: Threat, bind: Binding, g: GlobalInfo): Option[Plan] =
     {
       val demoted = threat.id
       val bottom = threat.threatened.id2
@@ -321,10 +328,10 @@ object FlawRepair extends Logging {
         debug { "demoted step " + demoted + " before " + bottom }
         val reasonString = "demoting step " + demoted + " after " + bottom
         new Some(p.copy(
-          id = Global.newPlanID(),
+          id = g.newPlanID(),
           ordering = p.ordering + ((bottom, demoted)),
           binding = bind,
-          flaws = p.flaws - threat,
+          flaws = p.flaws filterNot (_ == threat),
           reason = reasonString,
           history = new Record("demote", demoted, reasonString) :: p.history,
           parent = p))
