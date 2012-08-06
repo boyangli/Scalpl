@@ -1,0 +1,40 @@
+(problem
+(init 
+<<<<<<< HEAD
+	(at alex:Patron pharmacy:Location)
+	(at bob:Pharmacist pharmacy:Location)
+	(has alex prescription:Prescription)
+	(describes prescription pennicilin:Medicine)
+	(has alex cold:Disease)
+	(cures pennicilin cold)
+	(
+)
+(goal
+	(performed pharmacy-scene)
+	(health-improves alex)
+	(has bob money)
+)
+(classes
+	(subclass Patron Person)
+	(subclass Medicine Merchandise)
+	(sublcass Merchant Person)
+	(subclass Pharmacist Merchant)
+=======
+	(person customer)
+	(person pharmacist)
+	(work-at pharmacist pharmacy)
+	(at pharmacist pharmacy)
+	(at customer pharmacy)
+	(intends customer (owns customer medicine))
+	(intends pharmacist (received-from pharmacist money customer))
+	(intends pharmacist (health-improve customer))	
+)
+(goal
+	
+)
+(classes
+	(subclass Block Platform)
+	(subclass Table Platform)
+>>>>>>> 005382a8522ad90e620e3f4c27b694f24e559299
+)
+)

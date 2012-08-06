@@ -71,11 +71,14 @@ object ProblemParser extends PopParser {
 
   def readFile(file: String): Problem =
     {
-      val lines = scala.io.Source.fromFile(file).mkString
+      val lines = scala.io.Source.fromFile(file)
+      val text = filterComments(lines)
       //println("lines: " + lines)
-      val result = parseAll(problem, lines)
+      val result = parseAll(problem, text)
       result match {
-        case Success(x, _) => return x
+        case Success(x, _) =>
+          println("goals :" + x.goal)
+          return x
         case NoSuccess(err, next) => {
           println("failed to parse input as planning problem" +
             "(line " + next.pos.line + ", column " + next.pos.column + "):\n" +
@@ -84,6 +87,23 @@ object ProblemParser extends PopParser {
           throw new PopParsingException("planning problem parsing failure.")
         }
       }
+    }
+
+  private def filterComments(lines: io.BufferedSource): String =
+    {
+      var comment = false
+      lines.map { char =>
+        if (char != '#' && !comment) {
+          char
+        } else if (char == '#') {
+          comment = true
+          ' '
+        } else if (char == '\n') {
+          comment = false
+          '\n'
+        }
+        else ' '
+      }.mkString
     }
 }
 

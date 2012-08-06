@@ -55,6 +55,18 @@ class DecompPlan(
     {
       new DecompPlan(id, steps, links, dlinks, ordering, binding, flaws, reason, history, parent, children, stepCount)
     }
+  
+  def ultimateParent(stepId:Int):Int = 
+  {
+    var kid = stepId
+    var parent = dlinks.find(dl => dl.children.contains(kid))
+    while(parent.isDefined)
+    {
+      kid = parent.get.parent
+      parent = dlinks.find(dl => dl.children.contains(kid))
+    }
+    kid
+  }
 
 }
 

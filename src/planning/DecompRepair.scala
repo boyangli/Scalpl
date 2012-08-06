@@ -76,7 +76,7 @@ object DecompRepair extends Logging {
         var highStep = p.stepCount
         val newSteps = for (s <- recipe.steps) yield {
           highStep += 1
-          s.doubleInstantiate(highStep, parent.id)
+          s.doubleInstantiate(highStep, p.ultimateParent(parent.id))
         }
 
         // reuse candidates for each instantiated step are in one list
@@ -218,7 +218,8 @@ object DecompRepair extends Logging {
         for (i <- 0 until config.length) yield config(i) match {
           case false =>
             count += 1
-            val s = newSteps(i).doubleInstantiate(stepCount + count, parent.id)
+            //TODO: ugly code below
+            val s = newSteps(i).doubleInstantiate(stepCount + count, p.asInstanceOf[DecompPlan].ultimateParent(parent.id))
             insertedSteps += s
             s
           case actual: Action =>
@@ -296,7 +297,7 @@ object DecompRepair extends Logging {
         var highStep = p.stepCount
         val newSteps = for (s <- recipe.steps) yield {
           highStep += 1
-          s.doubleInstantiate(highStep, parent.id)
+          s.doubleInstantiate(highStep, p.ultimateParent(parent.id))
         }
 
         val newLinks = recipe.links map {

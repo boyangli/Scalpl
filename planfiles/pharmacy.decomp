@@ -1,0 +1,33 @@
+(decomposition Pharmacist-Check-Prescription
+	(steps
+		(step1 (order ?c1 ?med ?p1 ?place))
+		(step2 (ask-for ?p1 ?pres ?c1 ?place))
+		(step3 (give ?c1 ?pres ?p1 ?place))
+		(step4 (check ?p1 ?pres ?med ?c1))
+	)
+	(links
+		(step3 -> step4 (has ?p1 ?pres))		
+	)
+	(ordering		
+		(step1 step2)
+		(step2 step3)
+	)
+)
+
+(decomposition Pharmacy-Scene
+	(steps
+		(step1 (Pharmacist-Check-Prescription ?p1 ?c1 ?med ?pres ?place))
+		(step2 (give ?p1 ?med ?c1 ?place))
+		(step3 (give ?c1 ?money ?p1 ?place))
+		(step4 (intake ?c1 ?med ?disease))
+	)
+	(links
+		(step2 -> step4 (has ?c1 ?med))
+	)
+	(ordering		
+		(step1 step2)
+		(step1 step3)
+		(step2 step4)
+		(step3 step4)
+	)
+)

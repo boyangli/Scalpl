@@ -8,9 +8,9 @@
 	(has king money:Object)
 )
 (goal	
+(acquire-complete)
 	(has warrior money)
-	(acquire-complete)
-	
+	#(ddd)
 )
 
 (classes
