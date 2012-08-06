@@ -1,0 +1,22 @@
+(problem
+(init 
+	(at alex:Patron pharmacy:Location)
+	(at bob:Pharmacist pharmacy:Location)
+	(has alex prescription:Prescription)
+	(describes prescription pennicilin:Medicine)
+	(has alex cold:Disease)
+	(cures pennicilin cold)
+	(
+)
+(goal
+	(performed pharmacy-scene)
+	(health-improves alex)
+	(has bob money)
+)
+(classes
+	(subclass Patron Person)
+	(subclass Medicine Merchandise)
+	(sublcass Merchant Person)
+	(subclass Pharmacist Merchant)
+)
+)

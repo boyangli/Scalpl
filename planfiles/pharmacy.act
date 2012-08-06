@@ -1,0 +1,51 @@
+(action give (?p1:Person ?p2:Person ?obj:Object ?place:Location)
+     (actor ?p1)
+	 (constraints (neq ?p1 ?p2) )	 
+	 (preconditions (at ?p1 ?place) (at ?p2 ?place) (has ?p1 ?obj))
+	 (effects (not(has ?p1 ?obj)) (has ?p2 ?obj)) 
+	 )	
+
+(action order (?p1:Person ?obj:Merchandise ?p2:Merchant ?place:Location)
+     (actor ?p1)
+	 (constraints (neq ?p1 p2))	 
+	 (preconditions (at ?p1 ?place) (at ?p2 ?place) (sells ?p2 ?obj) )
+	 (effects (knows-order ?p2 ?p1 ?obj)) 
+	 )
+
+(action ask-for (?p1:Person ?obj:Object ?p2:Person ?place:Location)
+     (actor ?p1)
+	 (constraints (neq ?p1 ?p2))	 
+	 (preconditions (at ?p1 ?place) (at ?p2 ?place) )
+	 (effects ) 
+	 )
+
+(action check (?p1:Pharmacist, ?pres:Prescription, ?m:Medicine, ?c1:Patron)
+	(actor ?p1)
+	(constraints (neq ?p1 ?c1))
+	(preconditions (has ?p1 ?pres) (describes ?pres ?m) (good-for ?m ?c1))
+	(effects )
+	)
+	
+(action intake (?p1:Person ?med:Medicine ?disease:Disease)
+	(actor ?p1)
+	(constraints )
+	(preconditions (has ?p1 ?med) (cures ?med ?disease) (has ?p1 ?disease))
+	(effects (not (has ?p1 ?med)) (not (has ?p1 ?disease)) (health-improve ?p1))
+	)
+
+(composite action Parmacist-Check-Prescription(?p1:Pharmacist ?c1:Patron ?med:Medicine ?place:Location)
+	(actor ?p1)
+	(constraints (neq ?p1 ?c1))
+	(preconditions )
+	(effects )
+)
+
+(composite action Pharmacy-Story(?p1:Pharmacist ?c1:Patron ?med:Medicine ?pres:Prescription ?place:Location)
+	(actor ?p1)
+	(constraints (neq ?p1 ?c1))
+	(preconditions )
+	(effects )
+)
+
+
+	
