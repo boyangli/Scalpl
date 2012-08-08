@@ -1,0 +1,43 @@
+(problem
+(init 
+	# locations
+	(at warrior:Player bar:Location)
+	(at thief:Mobster bar:Location)
+	(at uncle:NPC home:Location)
+	(at guard1:Mobster jail:Location)
+	(at witch-doctor:NPC jail:Location)
+	(at sharpener:Object home:Location)
+	# belongings
+	(has thief secret-book:Object)
+	(has witch-doctor potion:Life-Med)
+	(has uncle sword:Weapon)
+
+	# living
+	(alive uncle)
+	(alive thief)
+	(alive witch-doctor)
+	(alive warrior)
+	
+	# misc
+	(injured uncle)
+	
+	# goals
+	(goals revenge-quest:Task revenge-task:Task reward:Task trade-quest:Task trade-task:Task)
+)
+(goal	
+	(complete revenge-quest)
+	#(complete trade-quest)
+	#(alive uncle)	
+	#(complete revenge-task)
+	(not (alive thief))
+	
+)
+
+(classes
+	(subclass Player Person)
+	(subclass Mobster Person)
+	(subclass NPC Person)	
+	(subclass Life-Med Object)
+	(subclass Weapon Object)
+)
+)

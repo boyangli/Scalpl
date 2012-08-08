@@ -88,6 +88,12 @@ class Action(
   override def hashCode() = (name.hashCode * 37 + id.hashCode * 97) % 23
 
   def canEqual(that: Any) = that.isInstanceOf[Action] && !that.isInstanceOf[DecompAction]
+  
+  
+  def toProposition():Proposition = 
+  {
+    new Proposition(Symbol(name), parameters)
+  }
 }
 
 object Action {

@@ -12,6 +12,58 @@ import scala.collection.mutable.HashMap
  */
 object DecompRepair extends Logging {
 
+  def selectFlaw(p: Plan, g: DecompGlobal): Flaw =
+    {
+      // fold left to find the flaw with the highest priority
+      //(p.flaws.head /: p.flaws.tail)((x, y) => if (x.priority <= y.priority) x else y)
+      var bestflaw = p.flaws.head
+      var bestnum = numRefinements(bestflaw, p, g)
+
+      val fitness = p.flaws.tail foreach { f =>
+        val num = numRefinements(f, p, g)
+        if (num < bestnum) {
+          bestnum = num
+          bestflaw = f
+        }
+        /*else if (num == bestnum) (bestflaw, f) match {
+          // choose the most recent undecomposed event
+          case (best: UnDecomposed, d: UnDecomposed) if (best.id < d.id) =>
+            bestnum = num
+            bestflaw = d
+          case (best: OpenCond, op: OpenCond) if (best.id < op.id) =>
+            // choose the most recent open condition (i.e. as the tie breaker)
+            bestnum = num
+            bestflaw = op
+          case _ =>
+        }*/
+      }
+
+      bestflaw
+    }
+
+  private def numRefinements(f: Flaw, p: Plan, g: DecompGlobal): Int = f match {
+    case d: UnDecomposed =>
+      val name = p.id2step(d.id).get.name
+      val num = g.recipes.count(_.name == name)
+      num
+    case t: Threat => 3 // tentative: always three ways of fixing any threats
+    case op: OpenCond =>
+      var verb = op.condition.verb
+      var num = 0
+
+      if (verb != 'not)
+        num = p.initialState().count(_.verb == verb) + g.actionTemplates.count(_.effects.exists(_.verb == verb)) +
+        p.steps.count(_.effects.exists(_.verb == verb))
+      else {
+        verb = op.condition.termlist.head.asInstanceOf[Proposition].verb
+        num = p.initialState().filter(_.verb == 'not).count(_.termlist.head.asInstanceOf[Proposition].verb == verb) +
+          g.actionTemplates.count(_.effects.filter(_.verb == 'not).exists(_.termlist.head.asInstanceOf[Proposition].verb == verb)) +
+          p.steps.count(_.effects.filter(_.verb == 'not).exists(_.termlist.head.asInstanceOf[Proposition].verb == verb))
+      }
+
+      num
+  }
+
   def refine(g: DecompGlobal)(p: Plan): List[Plan] =
     {
       if (!p.isInstanceOf[DecompPlan])
@@ -22,7 +74,7 @@ object DecompRepair extends Logging {
       trace { "reparing plan " + p.id }
 
       val kids =
-        SimpleRepair.selectFlaw(p) match {
+        selectFlaw(p, g) match {
           case open: OpenCond =>
             trace("repairing: " + open)
             repairOpen(p, open, g)
@@ -142,6 +194,16 @@ object DecompRepair extends Logging {
                   newOrderings += ((curId1, curId2)) // side effect: keep this ordering
                   //println("testing the ordering: " + (curId1, curId2))
                   p.ordering.possiblyAfter(curId1).contains(curId2)
+                case (x, y) if existingStepIds.keySet.contains(x) =>
+                  val curId1 = existingStepIds(x)
+                  val curId2 = newSteps(y).id
+                  newOrderings += ((curId1, curId2)) // side effect: keep this ordering
+                  true
+                case (x, y) if existingStepIds.keySet.contains(y) =>
+                  val curId1 = newSteps(x).id 
+                  val curId2 = existingStepIds(y)
+                  newOrderings += ((curId1, curId2)) // side effect: keep this ordering
+                  true
                 case (x, y) =>
                   newOrderings += ((newSteps(x).id, newSteps(y).id)) // side effect: keep this ordering
                   true
@@ -315,6 +377,8 @@ object DecompRepair extends Logging {
             (id1, id2)
         }) ++ p.ordering.list.filter(x => x._1 == parent.id).flatMap { pair => newSteps map { s => (s.id, pair._2) } } ++
           p.ordering.list.filter(x => x._2 == parent.id).flatMap { pair => newSteps map { s => (pair._2, s.id) } }
+
+        //println("*****new orderings: " + (newOrderings -- p.ordering.list))
 
         val undecomp = newSteps filter { _.composite } map { s => new UnDecomposed(s.id) }
         val open = newSteps flatMap { step =>

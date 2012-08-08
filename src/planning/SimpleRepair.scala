@@ -104,6 +104,7 @@ object SimpleRepair extends Logging {
     {
       // fold left to find the flaw with the highest priority
       (p.flaws.head /: p.flaws.tail)((x, y) => if (x.priority <= y.priority) x else y)
+
     }
 
   private[planning] def insertAction(p: Plan, open: OpenCond, g: GlobalInfo): List[Plan] =
@@ -134,7 +135,7 @@ object SimpleRepair extends Logging {
                       if (open.id == Constants.GOAL_ID)
                         Set(((highStep, open.id)), ((0, highStep)))
                       else Set(((highStep, open.id)), ((0, highStep)), (highStep, Constants.GOAL_ID))
-
+                    //println("*****added ordering: " + newordering)
                     val newLink = new Link(highStep, open.id, effect, open.condition)
 
                     val reasonString = "Inserted action " + highStep + " to establish " + open.condition
@@ -197,6 +198,8 @@ object SimpleRepair extends Logging {
             new Threat(step.id, effect, l)
           }
         }
+
+      //println("threats 1 = " + threats)
       threats
     }
 
@@ -206,7 +209,7 @@ object SimpleRepair extends Logging {
    */
   private[planning] def detectThreats(newlink: Link, p: Plan, g: GlobalInfo): List[Threat] =
     {
-      val possible = p.ordering.possiblyBefore(newlink.id2)
+      val possible = p.ordering.possiblyBefore(newlink.id2) intersect p.ordering.possiblyAfter(newlink.id1)
 
       val threats = p.steps filter { step =>
         // tests three conditions of causal threats
@@ -222,7 +225,7 @@ object SimpleRepair extends Logging {
               new Threat(step.id, effect, newlink)
           }
       }
-
+      //println("threats 2 = " + threats)
       threats
     }
 

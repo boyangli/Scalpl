@@ -8,8 +8,9 @@
 	(has king money:Object)
 )
 (goal	
+(has warrior money)
 (acquire-complete)
-	(has warrior money)
+	
 	#(ddd)
 )
 
