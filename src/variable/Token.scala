@@ -232,7 +232,7 @@ case class Variable(override val name: String, override val pType: String, val n
     case _ => false
   }
 
-  override def hashCode() = (toString().hashCode() * 97 + number * 89) % 37
+  override def hashCode() = (toString().hashCode() + number * 89) % 37
 
   def canEqual(o: Any): Boolean = o match {
     case that: Variable => true

@@ -45,12 +45,12 @@ class BestFirstSearch[N] (
         if (stats.nodeVisited > parameter.limit)
         {
           stats.finish()
-          throw new Exception("Not found: Search limit exceeded")
+          throw new Exception("Not found: Search limit exceeded\n" + stats.toString)
         }
       }
       // queue is empty but no valid solution found
       stats.finish()
-      throw new Exception("Not found: Queue exhausted")
+      throw new Exception("Not found: Queue exhausted.\n"+ stats.toString)
     }
 
   def addToQueue(nodes: List[N]) {

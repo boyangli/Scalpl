@@ -36,3 +36,15 @@
 		(step1 step2)
 	)
 )
+
+(decomposition Trade-Task
+	(steps		
+		(step1 (kill ?p1 ?p3 ?weapon ?place))
+		(step2 (exchange ?p1 ?p2 ?o1 ?o2 ?place))
+	)
+	(links		
+	)
+	(ordering		
+		(step1 step2)		
+	)
+)

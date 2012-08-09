@@ -17,8 +17,9 @@ class DecompPlan(
   children: List[Plan],
   stepCount: Int = 0) extends Plan(id, steps, links, ordering, binding, flaws, reason, history, parent, children, stepCount) {
 
-  /** this overrides the old copy method in Plan, so the dlink field is copied by default
-   * 
+  /**
+   * this overrides the old copy method in Plan, so the dlink field is copied by default
+   *
    */
   override def copy(
     id: Int = this.id,
@@ -36,7 +37,8 @@ class DecompPlan(
       new DecompPlan(id, steps, links, this.dlinks, ordering, binding, flaws, reason, history, parent, children, stepCount)
     }
 
-  /** Interestingly, Scala would not allow me to overload the copy method. 
+  /**
+   * Interestingly, Scala would not allow me to overload the copy method.
    * This is why there is a decompCopy, which supports copying every field in DecompPlan
    */
   def decompCopy(
@@ -55,19 +57,60 @@ class DecompPlan(
     {
       new DecompPlan(id, steps, links, dlinks, ordering, binding, flaws, reason, history, parent, children, stepCount)
     }
-  
-  def ultimateParent(stepId:Int):Int = 
-  {
-    var kid = stepId
-    var parent = dlinks.find(dl => dl.children.contains(kid))
-    while(parent.isDefined)
-    {
-      kid = parent.get.parent
-      parent = dlinks.find(dl => dl.children.contains(kid))
-    }
-    kid
-  }
 
+  def ultimateParent(stepId: Int): Int =
+    {
+      var kid = stepId
+      var parent = dlinks.find(dl => dl.children.contains(kid))
+      while (parent.isDefined) {
+        kid = parent.get.parent
+        parent = dlinks.find(dl => dl.children.contains(kid))
+      }
+      kid
+    }
+
+  override def planString(): String =
+    {
+      // a plan without steps
+      if (steps.length <= 2) return "Plan[" + id + "] with 0 steps"
+
+      var desc = ""
+      desc += "Decompositions: \n" + decompString() + "\n"
+      val order = ordering.topsort()
+      //print("order "+ order)
+      for (i <- order if i != Constants.INIT_ID && i != Constants.GOAL_ID) {
+        steps.find(_.id == i) match {
+          case Some(x:DecompAction) => if (!x.composite) desc += "[" + i + "] " + binding.substVarsString(x) + "\n"
+          case _ => ""
+        }
+      }
+      desc
+    }
+  
+  private def decompString() = {
+    
+    var ans = new StringBuilder()
+    var stack = List[(Int, Int)]() // simulate a stack with a list
+    dlinks foreach { link =>
+      stack = ((link.parent, 0)) :: stack
+    }
+    
+    while(!stack.isEmpty) {
+      val parent = stack.head
+      stack = stack.tail
+      val stepId = parent._1
+      val level = parent._2
+      ans append ("*"*level + "["+stepId+"]"+binding.substVarsShortString(id2step(stepId).get) + "\n")
+      
+      dlinks.filter(_.parent == stepId).foreach{ dl =>
+        dl.children foreach {c =>
+          stack = stack.filterNot(_._1 == c)
+          stack = ((c, level+1)) :: stack
+        }}      
+    }
+    
+    ans.toString
+  }
 }
 
 object DecompPlan {

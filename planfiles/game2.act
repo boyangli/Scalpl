@@ -1,7 +1,7 @@
 (action move (?p1:Person ?place1:Location ?place2:Location)
 	(actor ?p1)
 	(constraints (neq ?place1 ?place2))
-	(preconditions (at ?p1 ?place1) (alive ?p1))
+	(preconditions (at ?p1 ?place1) (alive ?p1) (not(jailed ?p1)))
 	(effects (not (at ?p1 ?place1)) (at ?p1 ?place2))
 	)
 
@@ -46,6 +46,13 @@
 	(preconditions (injured ?p) (alive ?p) )
 	(effects (not (alive ?p)))
 	)
+
+(action revive (?p1:Player ?p2:NPC ?potion:Life-Med ?loc:Location)
+	(actor ?p1)
+	(constraints (neq ?p1 ?p2))
+	(preconditions (has ?p1 ?potion) (at ?p1 ?loc) (at ?p2 ?loc) (not (alive ?p2)))
+	(effects (alive ?p2))
+)
 	
 (composite action Revenge-Task (?p1:Player ?p2:NPC ?p3:Mobster ?weapon:Weapon ?place1:Location ?place2:Location)
 	(actor ?p1)
@@ -67,4 +74,11 @@
 	(constraints (neq ?place1 ?place2))
 	(preconditions )
 	(effects (complete revenge-quest))
+	)
+
+(composite action Trade-Task (?p1:Player ?p2:NPC ?p3:Mobster ?weapon:Weapon ?place:Location ?o1:Object ?o2:Object)
+	(actor ?p1)
+	(constraints (neq ?o1 ?o2))
+	(preconditions (guards ?p3 ?p2))
+	(effects (complete trade-task))
 	)

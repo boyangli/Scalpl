@@ -9,7 +9,7 @@
 	(at sharpener:Object home:Location)
 	# belongings
 	(has thief secret-book:Object)
-	(has witch-doctor potion:Life-Med)
+	(has witch-doctor reviving-potion:Life-Med)
 	(has uncle sword:Weapon)
 
 	# living
@@ -17,20 +17,23 @@
 	(alive thief)
 	(alive witch-doctor)
 	(alive warrior)
+	(alive guard1)
 	
 	# misc
 	(injured uncle)
-	
+	(want witch-doctor secret-book)
+	(guards guard1 witch-doctor)
+	(jailed witch-doctor)
 	# goals
 	(goals revenge-quest:Task revenge-task:Task reward:Task trade-quest:Task trade-task:Task)
 )
 (goal	
 	(complete revenge-quest)
-	#(complete trade-quest)
+	(complete trade-task)
 	#(alive uncle)	
 	#(complete revenge-task)
 	(not (alive thief))
-	
+	(has warrior reviving-potion)
 )
 
 (classes

@@ -127,10 +127,10 @@ object SimpleRepair extends Logging {
               if (neqbind.canUnifyPart1(effect, open.condition, allConstraints _, init, g)) // filtering obviously impossible effects
               {
 
-                debug("trying inserting step " + newStep + " with effect: " + effect + " for " + open.condition)
+                //debug("trying inserting step " + newStep + " with effect: " + effect + " for " + open.condition)
                 neqbind.continueUnify() match {
                   case Some(newbind: Binding) =>
-                    debug("unification succeeds")
+                    //debug("unification succeeds")
                     var newordering =
                       if (open.id == Constants.GOAL_ID)
                         Set(((highStep, open.id)), ((0, highStep)))
@@ -240,14 +240,14 @@ object SimpleRepair extends Logging {
 
           oldstep.effects foreach {
             effect =>
-              debug("trying to reuse effect: " + stepId + ": " + effect + " for " + open.condition)
+              //debug("trying to reuse effect: " + stepId + ": " + effect + " for " + open.condition)
               // changed to a delimited continuation version. Seems to be a little faster - Aug 04 Albert
               def constraints() = (oldstep.constraints ::: p.id2step(open.id).map(_.constraints).getOrElse(Nil)) filterNot { _.verb == 'neq }
               if (p.binding.canUnifyPart1(effect, open.condition, constraints, init, g)) // filtering obviously impossible effects
               {
                 p.binding.continueUnify() match {
                   case Some(newbind: Binding) =>
-                    debug("reuse succeeds")
+                    //debug("reuse succeeds")
                     var newOrdering = Set(((stepId, open.id)))
                     val newLink = new Link(stepId, open.id, effect, open.condition)
                     val reasonString = "Reused action " + stepId + " to establish " + open.condition
@@ -328,7 +328,7 @@ object SimpleRepair extends Logging {
       val demoted = threat.id
       val bottom = threat.threatened.id2
       if (p.ordering.possiblyAfter(bottom).contains(demoted)) {
-        debug { "demoted step " + demoted + " before " + bottom }
+        debug { "demoted step " + demoted + " after " + bottom }
         val reasonString = "demoting step " + demoted + " after " + bottom
         new Some(p.copy(
           id = g.newPlanID(),
