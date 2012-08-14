@@ -14,7 +14,7 @@ import structures._
 
 import scala.collection.mutable.HashMap
 import action._
-
+/*
 class Graph {
 
   protected var graph = new mxGraph()
@@ -278,3 +278,4 @@ class Graph {
       return (cellArr, edges.toList)
     }
 }
+*/

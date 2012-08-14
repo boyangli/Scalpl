@@ -183,8 +183,10 @@ object DecompRepair extends Logging {
               // Step 2: Create the decompositional link
               val ids = children.map(_.id)
               val decompLink = new DecompLink(parent.id, ids)
+              
+              // Step 3.1 TODO: make sure the reuse steps' positions are compatible with the parent step
 
-              // Step 3: Make sure the orderings are valid
+              // Step 3: Make sure the orderings in the recipe are valid
               var newOrderings = ListBuffer[(Int, Int)]()
 
               val valid = recipe.ordering.forall {
@@ -193,7 +195,7 @@ object DecompRepair extends Logging {
                   val curId2 = existingStepIds(y)
                   newOrderings += ((curId1, curId2)) // side effect: keep this ordering
                   //println("testing the ordering: " + (curId1, curId2))
-                  p.ordering.possiblyAfter(curId1).contains(curId2)
+                  p.ordering.possiblyBefore(curId1, curId2)
                 case (x, y) if existingStepIds.keySet.contains(x) =>
                   val curId1 = existingStepIds(x)
                   val curId2 = newSteps(y).id
@@ -210,11 +212,13 @@ object DecompRepair extends Logging {
               }
 
               if (valid) {
-
-                // add existing orderings
-                newOrderings = newOrderings ++ p.ordering.list ++
-                  p.ordering.list.filter(x => x._1 == parent.id).flatMap { pair => insertedSteps map { s => (s.id, pair._2) } } ++
-                  p.ordering.list.filter(x => x._2 == parent.id).flatMap { pair => insertedSteps map { s => (pair._2, s.id) } }
+            	  val existingIds = existingStepIds.values.toArray
+            	  val insertedIds = insertedSteps.map(_.id).toArray
+            	  
+            	  val newOrd = p.ordering.copy
+            	  newOrd.inheritOrdering(parent.id, existingIds, insertedIds)
+            	  for(pair <- newOrderings)
+            	    newOrd.addOrder(pair._1, pair._2)
 
                 // compute new causal links
                 val newLinks = findCausalLinks(recipe.links, children, existingStepIds, p.binding, p, g)
@@ -237,7 +241,7 @@ object DecompRepair extends Logging {
                   flaws = undecomp ::: open ::: (p.flaws filterNot (_ == und)),
                   binding = newBind,
                   reason = reasonString,
-                  ordering = new Ordering(newOrderings.toSet),
+                  ordering = newOrd,
                   history = new Record("decompose", highStep, reasonString) :: p.history,
                   parent = p,
                   stepCount = highStep)
@@ -370,14 +374,15 @@ object DecompRepair extends Logging {
             new Link(id1, id2, cond, cond)
         }
 
-        val newOrderings = p.ordering.list ++ (recipe.ordering map {
+        val newOrd = p.ordering.copy()
+        newOrd.inheritOrdering(parent.id, Array[Int](), newSteps.map(_.id).toArray)
+        
+        recipe.ordering foreach {
           order: (Int, Int) =>
             val id1 = newSteps(order._1).id
             val id2 = newSteps(order._2).id
-            (id1, id2)
-        }) ++ p.ordering.list.filter(x => x._1 == parent.id).flatMap { pair => newSteps map { s => (s.id, pair._2) } } ++
-          p.ordering.list.filter(x => x._2 == parent.id).flatMap { pair => newSteps map { s => (pair._2, s.id) } }
-
+            newOrd.addOrder(id1, id2)
+        } 
         //println("*****new orderings: " + (newOrderings -- p.ordering.list))
 
         val undecomp = newSteps filter { _.composite } map { s => new UnDecomposed(s.id) }
@@ -396,7 +401,7 @@ object DecompRepair extends Logging {
           dlinks = newDlink :: p.dlinks, // Don't forget to insert the correct DecompLink
           flaws = undecomp ::: open ::: (p.flaws filterNot (_ == und)),
           reason = reasonString,
-          ordering = new Ordering(newOrderings),
+          ordering = newOrd,
           history = new Record("decompose", highStep, reasonString) :: p.history,
           parent = p,
           stepCount = highStep)

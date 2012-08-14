@@ -3,6 +3,7 @@ import variable._
 import analogy._
 import action._
 import structures._
+import jimpl._
 
 class Problem(
   val init: List[Proposition],
@@ -49,7 +50,7 @@ class GlobalInfo(var actionTemplates: List[Action], problem: Problem) {
     Plan(0,
       List[Action](initStep, goalStep),
       List[Link](),
-      new Ordering(Set((0, Constants.GOAL_ID))),
+      new OrderingFaster(),
       new Binding(),
       flaws,
       "initial plan",
@@ -70,7 +71,7 @@ class DecompGlobal(actionTemplates: List[DecompAction], problem: Problem, val re
       List[Action](initStep, goalStep),
       List[Link](),
       List[DecompLink](),
-      new Ordering(Set((0, Constants.GOAL_ID))),
+      new OrderingFaster(),
       new Binding(),
       flaws,
       "initial plan",

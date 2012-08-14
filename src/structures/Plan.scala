@@ -4,11 +4,12 @@ import analogy._
 import action._
 import planning._
 import parsing.Parsible
+import jimpl._
 
 class PlanLike(
   val steps: List[Action],
   val links: List[Link],
-  val ordering: Ordering,
+  val ordering: JOrdering,
   val binding: Binding) {
 }
 
@@ -16,7 +17,7 @@ case class ProtoFrame(
   val name: String,
   override val steps: List[Action],
   override val links: List[Link],
-  override val ordering: Ordering,
+  override val ordering: JOrdering,
   override val binding: Binding) extends PlanLike(steps, links, ordering, binding) {
 
   override def toString(): String = "<Frame of " + name + " #steps=" + steps.length + ">"
@@ -28,7 +29,7 @@ case class ProtoFrame(
 
       var desc = "<Frame of " + name + ">\n"
 
-      val order = ordering.topsort()
+      val order = ordering.topsort(steps.map(_.id).toArray)
       for (i <- order if i != 0 && i != Constants.GOAL_ID) {
         steps.find(_.id == i) match {
           case Some(x) => desc += "[" + i + "] " + binding.substVarsString(x) + "\n"
@@ -43,7 +44,7 @@ case class Plan(
   val id: Int,
   override val steps: List[Action],
   override val links: List[Link],
-  override val ordering: Ordering,
+  override val ordering: JOrdering,
   override val binding: Binding,
   val flaws: List[Flaw],
   val reason: String,
@@ -72,7 +73,7 @@ case class Plan(
 
       var desc = ""
       //println(ordering.allIDs)
-      val order = ordering.topsort()
+      val order = ordering.topsort(steps.map(_.id).toArray)
       //print("order "+ order)
       for (i <- order if i != Constants.INIT_ID && i != Constants.GOAL_ID) {
         steps.find(_.id == i) match {
@@ -97,7 +98,7 @@ case class Plan(
       var answer = "(objects " + collectObjects.mkString(" ") + ")\n" // objects
       answer += "(initial-state " + initialState.map(_.toShortString).mkString(" ") + ")\n" // initial state
 
-      val order = ordering.topsort()
+      val order = ordering.topsort(steps.map(_.id).toArray)
       var stepString = ""
 
       for (i <- order if i != Constants.INIT_ID && i != Constants.GOAL_ID) {
@@ -110,7 +111,7 @@ case class Plan(
       answer += "(goal-state " + goalState.map(_.toShortString).mkString(" ") + ")\n"
       answer += "(steps \n" + stepString + ")\n"
       answer += "(links " + links.map(_.toFileString).mkString("\n") + ")\n"
-      answer += "(orderings " + ordering.toFileString() + ")\n"
+      answer += "(orderings " + ordering.toStr() + ")\n"
 
       answer
     }
@@ -144,7 +145,7 @@ case class Plan(
 
 object Plan {
 
-  def apply(id: Int, steps: List[Action], links: List[Link], ordering: Ordering, binding: Binding, flaws: List[Flaw], reason: String,
+  def apply(id: Int, steps: List[Action], links: List[Link], ordering: JOrdering, binding: Binding, flaws: List[Flaw], reason: String,
     parent: Plan, children: List[Plan]) =
     new Plan(id, steps, links, ordering, binding, flaws, reason, List[Record](), parent, children, 
         steps filterNot{_.dummy} size)
@@ -152,6 +153,6 @@ object Plan {
   def getEmpty(global:GlobalInfo): Plan =
     {
       val id = global.newPlanID()
-      new Plan(id, List[Action](), List[Link](), new Ordering(), new Binding(), List[Flaw](), "", List[Record](), null, null)
+      new Plan(id, List[Action](), List[Link](), new OrderingFaster(), new Binding(), List[Flaw](), "", List[Record](), null, null)
     }
 }

@@ -5,7 +5,7 @@ import planning._
 import structures._
 import com.mxgraph.swing.mxGraphComponent
 import com.mxgraph.view.mxGraph
-
+/*
 object BasicSwing extends SimpleSwingApplication {
 
   val centerDim = new Dimension(600, 500)
@@ -88,3 +88,4 @@ object BasicSwing extends SimpleSwingApplication {
   }
 
 }
+*/

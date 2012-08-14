@@ -139,13 +139,20 @@ object SimpleRepair extends Logging {
                     val newLink = new Link(highStep, open.id, effect, open.condition)
 
                     val reasonString = "Inserted action " + highStep + " to establish " + open.condition
+                    val newOrd = p.ordering.copy()
+                    
+                    for (pair <- newordering)
+                    {
+                    	newOrd addOrder (pair._1, pair._2)
+                    }
+                    
                     val kid = p.copy(
                       id = g.newPlanID(),
                       steps = newStep :: p.steps,
                       links = newLink :: p.links,
                       binding = newbind,
                       flaws = newStep.preconditions.map { p => new OpenCond(highStep, p) } ::: (p.flaws filterNot (_ == open)),
-                      ordering = new Ordering(newordering ++ p.ordering.list),
+                      ordering = newOrd,
                       reason = reasonString,
                       history = new Record("insert", highStep, reasonString) :: p.history,
                       parent = p,
@@ -172,8 +179,7 @@ object SimpleRepair extends Logging {
     {
       val stepid = threat.id
       val link = threat.threatened
-      val possible = p.ordering.possiblyBefore(link.id2)
-      possible.contains(stepid) && p.binding.canUnify(threat.effect.negate, link.precondition, g)
+      p.ordering.possiblyBefore(stepid, link.id2) && p.binding.canUnify(threat.effect.negate, link.precondition, g)
     }
 
   /**
@@ -182,12 +188,10 @@ object SimpleRepair extends Logging {
    */
   def detectThreats(step: Action, p: Plan, g: GlobalInfo): List[Threat] =
     {
-      val before = p.ordering.possiblyBefore(step.id)
-      val after = p.ordering.possiblyAfter(step.id)
 
       val threats = p.links filter { l =>
         // tests the position of threatened link
-        before.contains(l.id1) && after.contains(l.id2)
+        p.ordering.possiblyBefore(l.id1, step.id) && p.ordering.possiblyBefore(step.id, l.id2)
       } flatMap
         { l =>
           step.effects filter { effect =>
@@ -209,12 +213,11 @@ object SimpleRepair extends Logging {
    */
   private[planning] def detectThreats(newlink: Link, p: Plan, g: GlobalInfo): List[Threat] =
     {
-      val possible = p.ordering.possiblyBefore(newlink.id2) intersect p.ordering.possiblyAfter(newlink.id1)
+      val possible = p.steps.filter { step =>
+        p.ordering.possiblyBefore(step.id, newlink.id2) && p.ordering.possiblyBefore(newlink.id1, step.id)
+      }
 
-      val threats = p.steps filter { step =>
-        // tests three conditions of causal threats
-        possible.contains(step.id)
-      } flatMap {
+      val threats = possible flatMap {
         step =>
           step.effects filter { effect =>
             val negated = effect.negate // compute a negated proposition
@@ -233,7 +236,7 @@ object SimpleRepair extends Logging {
     {
       var kids = List[Plan]()
       val init = p.steps.find(_.id == 0).get.effects // initial state
-      val possibleActions = p.ordering.possiblyBefore(open.id) flatMap { p.id2step(_) }
+      val possibleActions = p.steps filter {step => p.ordering.possiblyBefore(step.id, open.id)} 
       possibleActions foreach {
         oldstep =>
           val stepId = oldstep.id
@@ -248,7 +251,9 @@ object SimpleRepair extends Logging {
                 p.binding.continueUnify() match {
                   case Some(newbind: Binding) =>
                     //debug("reuse succeeds")
-                    var newOrdering = Set(((stepId, open.id)))
+                    var newOrdering = p.ordering.copy()
+                    newOrdering.addOrder(stepId, open.id)
+                    
                     val newLink = new Link(stepId, open.id, effect, open.condition)
                     val reasonString = "Reused action " + stepId + " to establish " + open.condition
                     var kid = p.copy(
@@ -256,7 +261,7 @@ object SimpleRepair extends Logging {
                       links = newLink :: p.links,
                       binding = newbind,
                       flaws = p.flaws filterNot (_ == open),
-                      ordering = new Ordering(newOrdering ++ p.ordering.list),
+                      ordering = newOrdering,
                       reason = reasonString,
                       history = new Record("reuse", stepId, reasonString) :: p.history,
                       parent = p)
@@ -309,12 +314,14 @@ object SimpleRepair extends Logging {
     {
       val promoted = threat.id
       val top = threat.threatened.id1
-      if (p.ordering.possiblyBefore(top).contains(promoted)) {
+      if (p.ordering.possiblyBefore(promoted, top)) {
         debug { "promoted step " + promoted + " before " + top }
         val reasonString = "promoting step " + promoted + " before " + top
+        val newOrd = p.ordering.copy
+        newOrd addOrder(promoted, top)
         new Some(p.copy(
           id = g.newPlanID(),
-          ordering = p.ordering + ((promoted, top)),
+          ordering = newOrd,
           binding = bind,
           flaws = p.flaws filterNot (_ == threat),
           reason = reasonString,
@@ -327,12 +334,16 @@ object SimpleRepair extends Logging {
     {
       val demoted = threat.id
       val bottom = threat.threatened.id2
-      if (p.ordering.possiblyAfter(bottom).contains(demoted)) {
+      if (p.ordering.possiblyBefore(bottom, demoted)) {
         debug { "demoted step " + demoted + " after " + bottom }
         val reasonString = "demoting step " + demoted + " after " + bottom
+        
+        val newOrd = p.ordering.copy
+        newOrd addOrder(bottom, demoted)
+        
         new Some(p.copy(
           id = g.newPlanID(),
-          ordering = p.ordering + ((bottom, demoted)),
+          ordering = newOrd,
           binding = bind,
           flaws = p.flaws filterNot (_ == threat),
           reason = reasonString,

@@ -19,7 +19,7 @@ object TestDecompPlanning {
   val actionFile = "./planfiles/pharmacy.act"
   val decompFile = "./planfiles/pharmacy.decomp"
   */
-    readLine()
+    //readLine()
 
     val (problem, actions, recipes) = TotalParser.decompParse(problemFile, actionFile, decompFile)
 

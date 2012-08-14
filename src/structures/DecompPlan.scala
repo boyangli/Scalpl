@@ -2,13 +2,14 @@ package structures
 import action._
 import planning._
 import variable._
+import jimpl._
 
 class DecompPlan(
   id: Int,
   steps: List[Action],
   links: List[Link],
   val dlinks: List[DecompLink],
-  ordering: Ordering,
+  ordering: JOrdering,
   binding: Binding,
   flaws: List[Flaw],
   reason: String,
@@ -25,7 +26,7 @@ class DecompPlan(
     id: Int = this.id,
     steps: List[Action] = this.steps,
     links: List[Link] = this.links,
-    ordering: Ordering = this.ordering,
+    ordering: JOrdering = this.ordering,
     binding: Binding = this.binding,
     flaws: List[Flaw] = this.flaws,
     reason: String = this.reason,
@@ -46,7 +47,7 @@ class DecompPlan(
     steps: List[Action] = this.steps,
     links: List[Link] = this.links,
     dlinks: List[DecompLink] = this.dlinks,
-    ordering: Ordering = this.ordering,
+    ordering: JOrdering = this.ordering,
     binding: Binding = this.binding,
     flaws: List[Flaw] = this.flaws,
     reason: String = this.reason,
@@ -76,7 +77,7 @@ class DecompPlan(
 
       var desc = ""
       desc += "Decompositions: \n" + decompString() + "\n"
-      val order = ordering.topsort()
+      val order = ordering.topsort(steps.map(_.id).toArray)
       //print("order "+ order)
       for (i <- order if i != Constants.INIT_ID && i != Constants.GOAL_ID) {
         steps.find(_.id == i) match {
@@ -114,7 +115,7 @@ class DecompPlan(
 }
 
 object DecompPlan {
-  def apply(id: Int, steps: List[Action], links: List[Link], dlinks: List[DecompLink], ordering: Ordering,
+  def apply(id: Int, steps: List[Action], links: List[Link], dlinks: List[DecompLink], ordering: JOrdering,
     binding: Binding, flaws: List[Flaw], reason: String,
     parent: Plan, children: List[Plan]) =
     new DecompPlan(id, steps, links, dlinks, ordering, binding, flaws, reason, List[Record](), parent, children)
@@ -122,7 +123,7 @@ object DecompPlan {
   def getEmpty(global: GlobalInfo): Plan =
     {
       val id = global.newPlanID()
-      new DecompPlan(id, List[Action](), List[Link](), List[DecompLink](), new Ordering(), new Binding(), List[Flaw](), "", List[Record](), null, null)
+      new DecompPlan(id, List[Action](), List[Link](), List[DecompLink](), new OrderingFaster(), new Binding(), List[Flaw](), "", List[Record](), null, null)
     }
 
 }
