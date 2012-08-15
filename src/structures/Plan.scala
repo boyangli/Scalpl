@@ -60,7 +60,7 @@ case class Plan(
       var desc = planString() + "\n"
       desc += flaws.mkString("flaws: \n", "\n", "\n")
       desc += links.mkString("links: \n", "\n", "\n")
-      desc += "orderings: \n" + ordering.toString() + "\n"
+      desc += "orderings: \n" + ordering.toStr() + "\n"
       desc += "reason: " + reason + "\n"
       desc += "history: " + history.mkString(", ") + "\n"
       desc

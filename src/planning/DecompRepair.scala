@@ -140,16 +140,20 @@ object DecompRepair extends Logging {
               //println("matching: " + template)
             }
 
-            val a = false :: {
+            /* the choices variable contains all possible choices for this particular step in the decomposition.
+             * "false" denote the case where the step is inserted into the plan.
+             * Other steps are steps that can unify with the decomposition, i.e. steps that we can reuse
+             */
+            val choices = false :: {
               p.steps filter (DecompReuse.canUnifyAction(_, template, parent, p, g))
-            }
+            }  
 
             /*println("matched : " + a.map(_ match {
               case ac: Action => p.binding.substVarsShortString(ac)
               case _ => ""
             }).mkString(",\n"))
             */
-            a
+            choices
         }
         //println(candidates.mkString("\n"))
 
@@ -169,7 +173,7 @@ object DecompRepair extends Logging {
 
         }
 
-        // filter out the all-false configuration because that is the same as straigh decomposition
+        // filter out the all-false configuration because that is the same as a new decomposition
         all = all filterNot (_ forall (_ == false))
 
         all map { config =>
@@ -179,17 +183,27 @@ object DecompRepair extends Logging {
             case Some(triple) =>
 
               val (children, insertedSteps, existingStepIds, newBind) = triple
-
+              // existingStepIds is a Map from step ids in the decomposition recipes to real step ids in the plan
+              
               // Step 2: Create the decompositional link
               val ids = children.map(_.id)
               val decompLink = new DecompLink(parent.id, ids)
               
-              // Step 3.1 TODO: make sure the reuse steps' positions are compatible with the parent step
-
-              // Step 3: Make sure the orderings in the recipe are valid
+              // Step 3.1 make sure the reuse steps' positions are compatible with the parent step
+              val stepIds = p.steps.map(_.id)
+              //val beforeParent = filter(p.ordering.orderedBefore(_, parent.id))
+              //val afterParent = filter(p.ordering.orderedBefore(parent.id, _))
+              var valid = existingStepIds.values.forall{id =>
+                stepIds.forall { pid =>
+                  ((!p.ordering.orderedBefore(pid, parent.id)) || p.ordering.possiblyBefore(pid, id)) && 
+                  ((!p.ordering.orderedBefore(parent.id, pid)) || p.ordering.possiblyBefore(id, pid))
+                }                
+              }
+              
+              // Step 3.2: Make sure the orderings in the recipe are valid
               var newOrderings = ListBuffer[(Int, Int)]()
 
-              val valid = recipe.ordering.forall {
+              valid = valid && recipe.ordering.forall {
                 case (x, y) if existingStepIds.keySet.contains(x) && existingStepIds.keySet.contains(y) =>
                   val curId1 = existingStepIds(x)
                   val curId2 = existingStepIds(y)
