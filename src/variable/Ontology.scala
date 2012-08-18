@@ -7,11 +7,11 @@ import parsing.PopParsingException
  *
  */
 class Ontology(protected val subclasses: Map[String, Set[String]], // from a super class to its subclasses
-  protected val objectHash: Map[String, Token] // from object name to their tokens
+  protected val objectHash: Map[String, PopObject] // from object name to their tokens
   ) {
 
   // from a type to its range of value, i.e. objects belonging to this type
-  val domains: Map[String, List[Token]] = {
+  val domains: Map[String, List[PopObject]] = {
     subclasses.keySet map { cl: String =>
 
       val range = objectHash.values.filter { token =>
@@ -59,7 +59,7 @@ class Ontology(protected val subclasses: Map[String, Set[String]], // from a sup
     {
       if (action.parameters.exists(v => v.pType == "Any")) throw new PopParsingException("unspecified parameter type in action: " + action)
 
-      var actionHash = scala.collection.mutable.HashMap() ++ objectHash
+      var actionHash = scala.collection.mutable.HashMap[String, Token]() ++ objectHash
       action.parameters map { v =>
         if (actionHash.get(v.name).isDefined) throw new PopParsingException("name conflicts: " + v.name + " is repeated.")
         else
@@ -208,8 +208,14 @@ class Ontology(protected val subclasses: Map[String, Set[String]], // from a sup
   override def toString() = "Ontology: " + subclasses.toString
 
   // TODO: Find and store all objects of a particular type
-  def objectsOfType(objtype: String): List[PopObject] = Nil
-  def knownTypeOf(obj: String): String = "Any"
+  def objectsOfType(objtype: String): List[PopObject] = domains.get(objtype) match {
+    case Some(list) => list
+    case None => Nil
+  }
+  
+  def knownTypeOf(obj: String): Option[String] = objectHash.get(obj).map(_.pType)
+  
+  def objectByName(name: String) = objectHash.get(name)
 }
 
 //object Ontology {

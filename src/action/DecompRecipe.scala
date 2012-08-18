@@ -11,8 +11,8 @@ import parsing.Parsible
  */
 class RawRecipe(
   val name: String,
-  val steps: List[(String, Proposition)],
-  val links: List[(String, String, Proposition)],
+  val steps: List[(Int, Proposition)],
+  val links: List[(Int, Int, Proposition)],
   val ordering: List[(String, String)]) {
 
   def toParseableString(): String =

@@ -45,7 +45,7 @@ object ProblemParser extends PopParser {
       case init ~
         ")" ~ "(" ~ "goal" ~ goal ~ ")" ~ None =>
           // the subclass list is not supplied
-        var objectHash = HashMap[String, Token]()
+        var objectHash = HashMap[String, PopObject]()
         init.foreach(collectTypes(_, objectHash))
         goal.foreach(collectTypes(_, objectHash))
         val subclasses = Map[String, Set[String]]() ++ objectHash.values.map(_.pType).toList.distinct.map((_, Set[String]()))
@@ -95,7 +95,7 @@ object ProblemParser extends PopParser {
           }
         }
 
-        val objectHash = HashMap[String, Token]()
+        val objectHash = HashMap[String, PopObject]()
         init.foreach(collectTypes(_, objectHash))
         goal.foreach(collectTypes(_, objectHash))
 
@@ -106,7 +106,7 @@ object ProblemParser extends PopParser {
         new Problem(newInit, newGoal, ontology)
     }
 
-  def collectTypes(prop: Proposition, objectHash: HashMap[String, Token]) {
+  def collectTypes(prop: Proposition, objectHash: HashMap[String, PopObject]) {
     prop.termlist.foreach {
       _ match {
         case o: PopObject => if (o.pType != "Any") {

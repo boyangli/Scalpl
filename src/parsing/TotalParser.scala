@@ -18,7 +18,7 @@ object TotalParser extends AbstractPlanParser {
       var actionList = DecompActionParser.readFile(actionFile)
 
       actionList = actionList map { ontology.appendTypesToTemplate(_).asInstanceOf[DecompAction] }
-      
+
       // test the validity of actions for once
       actionList foreach { _.testValid() }
 
@@ -28,38 +28,43 @@ object TotalParser extends AbstractPlanParser {
       (problem, actionList, recipes)
     }
 
-  /** Extracts the Recipe data structure from crudely parsed inputs.
-   * 
-   * The method has been changed to make use of variable bindings instead of variable substitutions. 
+  /**
+   * Extracts the Recipe data structure from crudely parsed inputs.
+   *
+   * The method has been changed to make use of variable bindings instead of variable substitutions.
    * This results in a flexible representation, albeit a bit more complex coding, that allows the following two advantages:
-   * 
-   * To make authoring easier, we allow a decomposition recipe to contain free variables. 
-   * i.e. a child step may use variables not be specified in the parent step. 
-   * 
-   * Additionally, we now allow the steps in the recipe to contain ground symbols. This could make planning faster. 
-   * 
+   *
+   * To make authoring easier, we allow a decomposition recipe to contain free variables.
+   * i.e. a child step may use variables not be specified in the parent step.
+   *
+   * Additionally, we now allow the steps in the recipe to contain ground symbols. This could make planning faster.
+   *
    * Albert Li Aug 17 2012
    */
   protected def extractRecipes(raw: List[RawRecipe], actions: List[DecompAction], problem: Problem): List[Recipe] = {
-    
+
     raw map { r =>
 
       val tokenTypes = HashMap[String, String]()
-      val bound = HashMap[String, List[Token]]()
+      val bound = HashMap[String, List[Variable]]()
+      var objectBound = List[(Variable, PopObject)]()
       val parent = findAction(Symbol(r.name), actions)
 
-      // keeping record of the parent's variable types
-      parent.parameters foreach { v =>
-        tokenTypes += ((v.name, v.pType))
-      }
       
+      parent.parameters foreach { v =>
+        // keeping record of the parent's variable types
+        tokenTypes += ((v.name, v.pType))
+        // a parent variable has to appear in the bound map
+        bound += ((v.name, List(v)))
+      }
+
       // find the corresponding action templates, and 
       // modify the templates to use the same variables as in the recipe
       val steps = r.steps map {
         step =>
-          val stepNum = step._1.replaceAll("step","").toInt
+          val stepNum = step._1
           val actInput = step._2 // this is actually parsed into a proposition
-          val actName = actInput.verb          
+          val actName = actInput.verb
           val actTempl = findAction(actName, actions)
 
           var arguments = ListBuffer[Variable]()
@@ -67,75 +72,76 @@ object TotalParser extends AbstractPlanParser {
           // First, their size has to be the same
           if (step._2.termlist.size != actTempl.parameters.size)
             throw new PopParsingException("parameter list " + actInput.termlist + " does not match the parameters of action " + actName)
-          
-          
+
           val pairs = (actTempl.parameters) zip (actInput.termlist)
           // checking for each pair of matched tokens
           pairs foreach {
-            
+
             case (standard, specified: Variable) =>
               // try to find a type from specified variable
               val typeStored = tokenTypes.get(specified.name)
               val typeSpecified = specified.pType
               val realType = {
-                if (typeSpecified == "Any")
-                {
+                if (typeSpecified == "Any") {
                   if (typeStored.isDefined) typeStored.get
                   else {
                     tokenTypes += ((specified.name, standard.pType))
                     standard.pType
                   }
-                }
-                else
-                {
+                } else {
                   // exception case
-                  if (typeStored.isDefined && typeStored.get != typeSpecified)
-                  {
+                  if (typeStored.isDefined && typeStored.get != typeSpecified) {
                     val str = new StringBuilder()
                     str append "For variable " append specified.name append " in decomp " append r.name append " the specified type "
                     str append typeSpecified append "does not match the inferred type " append typeStored.get
                     throw new PopParsingException(str.toString())
-                  }
-                  else if (typeStored.isEmpty)
-                  {
+                  } else if (typeStored.isEmpty) {
                     tokenTypes += ((specified.name, typeSpecified))
                   }
-                    typeSpecified // typeStored == typeSpecified                 
+                  typeSpecified // typeStored == typeSpecified                 
                 }
               }
-              
-                if (realType != standard.pType)  
-                {
-                  // type mismatch. check if subtype relation exists
-                  if (!problem.ontology.isSubtype(realType, standard.pType)) {
-                    // no subtype relation exists
-                    throw new PopParsingException("Action " + actName + " requires type: " + standard.pType + ", but variable " +
-                      specified.name + " is of type " + realType + " in decomposition " + r.name)
-                } 
-                }
-                  
-                // add to bound list
-                   bound.get(specified.name) match {
-                     case Some(existent) => 
-                       bound += ((specified.name, standard.instantiate(stepNum) :: existent))
-                     case None => bound += ((specified.name, List(standard.instantiate(stepNum))))
-                   }
-              
 
-            case (v:Variable, obj:PopObject) => // The recipe has specified an object
-              // TODO: find the real type of the object
-              val realType = {
-                if (obj.pType != "Any") obj
-                else 
+              if (realType != standard.pType) {
+                // type mismatch. check if subtype relation exists
+                if (!problem.ontology.isSubtype(realType, standard.pType)) {
+                  // no subtype relation exists
+                  throw new PopParsingException("Action " + actName + " requires type: " + standard.pType + ", but variable " +
+                    specified.name + " is of type " + realType + " in decomposition " + r.name)
+                }
               }
+
+              /* add to bound list
+               *  the specified.name is the key. 
+               *  We rely on it to find all the variables that are supposed to be bound together.
+               *
+               */
+              bound.get(specified.name) match {
+                case Some(existent) =>
+                  bound += ((specified.name, standard.instantiate(stepNum) :: existent))
+                case None => bound += ((specified.name, List(standard.instantiate(stepNum))))
+              }
+
+            case (v: Variable, obj: PopObject) => 
+              // The recipe has specified an object
+              // retrieve the object by name from the ontology
+              val ontology = problem.ontology
+              val realObj = ontology.objectByName(obj.name) match {
+                case Some(retrieved) => retrieved
+                case None => throw new PopParsingException("I have never seen an object named " + obj.name + " before!")
+              }
+
+              // this is where you put the object - variable bindings
+              objectBound = (v, realObj) :: objectBound
+
             case (a, b) => // Error if neither above cases are met.
               throw new PopParsingException("this is not a parameter: " + b)
           }
 
-                   
-
           (stepNum, actTempl)
       }
+      
+      // TODO: we need to print the stuff and make sure they are correct!!
 
       // Compute causal links
       val links = r.links map {
@@ -158,11 +164,11 @@ object TotalParser extends AbstractPlanParser {
           val num2 = steps.indexWhere(_._1 == order._2)
           (num1, num2)
       }
-      
-      // Add orderings implied by causal links
-      orderings = (links.map{l => (l.id1, l.id2)} ::: orderings).distinct
 
-      new Recipe(r.name, steps map { _._2 }, links, orderings)
+      // Add orderings implied by causal links
+      orderings = (links.map { l => (l.id1, l.id2) } ::: orderings).distinct
+
+      null
     }
   }
 
@@ -174,13 +180,13 @@ object TotalParser extends AbstractPlanParser {
     }
 
   def parse(problemFile: String, actionFile: String): (Problem, List[Action]) =
-    {      
+    {
       var problem = ProblemParser.readFile(problemFile)
       var listAction = ActionParser.readFile(actionFile)
 
       val ontology = problem.ontology
       listAction = listAction map { ontology.appendTypesToTemplate }
-      
+
       // test the action validity for once
       listAction foreach { _.testValid() }
 

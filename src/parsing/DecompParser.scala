@@ -6,6 +6,7 @@ import scala.util.parsing.combinator._
 import planning._
 import structures._
 
+//TODO: code changed. needs testing.
 object DecompParser extends PopParser {
 
   var actions: List[Action] = null
@@ -47,14 +48,14 @@ object DecompParser extends PopParser {
           new RawRecipe(name, steps, links, orderings)
       }
 
-  def recipeStep: Parser[(String, Proposition)] = "(" ~> string ~ prop <~ ")" ^^
+  def recipeStep: Parser[(Int, Proposition)] = "(" ~ "step" ~> integer ~ prop <~ ")" ^^
     {
-      case name ~ p => (name, p)
+      case num ~ p => (num, p)
     }
 
-  def recipeLink: Parser[(String, String, Proposition)] = "(" ~> string ~ "->" ~ string ~ prop <~ ")" ^^
+  def recipeLink: Parser[(Int, Int, Proposition)] = "(" ~ "step" ~> integer ~ "->" ~ "step" ~ integer ~ prop <~ ")" ^^
     {
-      case name1 ~ "->" ~ name2 ~ p => (name1, name2, p)
+      case num1 ~ "->" ~ "step" ~ num2 ~ p => (num1, num2, p)
     }
 
   def recipeOrdering: Parser[(String, String)] = "(" ~> string ~ string <~ ")" ^^

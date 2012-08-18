@@ -93,7 +93,9 @@ case class Plan(
     }
     */
 
-  override def toParseString(): String =
+  
+  override def toParseString(): String = ""
+    /* TODO: make a good output format for plans
     {
       var answer = "(objects " + collectObjects.mkString(" ") + ")\n" // objects
       answer += "(initial-state " + initialState.map(_.toShortString).mkString(" ") + ")\n" // initial state
@@ -115,7 +117,8 @@ case class Plan(
 
       answer
     }
-
+  */
+ /*
   private def collectObjects(): Set[PopObject] =
     {
       var collection = Set[PopObject]()
@@ -136,7 +139,8 @@ case class Plan(
 
       collection
     }
-
+ */
+  
   def id2step(id: Int): Option[Action] = steps.find { _.id == id }
 
   def initialState() = steps.find(_.id == 0).get.effects // initial state
