@@ -37,37 +37,75 @@ object PopParser {
 }
 
 object ProblemParser extends PopParser {
+  
+  var objectHash = HashMap[String, Token]()
+  
   def problem: Parser[Problem] = "(" ~ "problem" ~ "(" ~ "init" ~> rep(prop) ~
     ")" ~ "(" ~ "goal" ~ rep(prop) ~ ")" ~ opt("(" ~ "classes" ~ rep(prop) ~ ")") <~
     ")" ^^
     {
-      case list1 ~
-        ")" ~ "(" ~ "goal" ~ list2 ~ ")" ~ None => new Problem(list1, list2)
+      case init ~
+        ")" ~ "(" ~ "goal" ~ goal ~ ")" ~ None => new Problem(init, goal)
 
       case list1 ~
         ")" ~ "(" ~ "goal" ~ list2 ~ ")" ~ Some("(" ~ "classes" ~ list3 ~ ")") =>
-        // this is where we read in subclass information
-        // for now we do not infer subclasses
-        // that is, all class hierarchies, explicit or implied, must be supplied by the user 
+        // read in subclass information
         var classHash = new HashMap[String, Set[String]]()
         list3 foreach { prop =>
           prop.verb match {
             case 'subclass =>
               val subclass = prop.termlist(0).asInstanceOf[PopObject].name
               val superclass = prop.termlist(1).asInstanceOf[PopObject].name
-              if (classHash.contains(superclass)) {
-                val set = classHash.get(superclass).get + subclass
-                classHash += (superclass -> set)
-              } else
-                classHash += (superclass -> Set(subclass))
-
+              classHash.get(superclass) match {
+                case Some(set) =>
+                  classHash += (superclass -> (set + subclass))
+                case None =>
+                  classHash += (superclass -> Set(subclass))
+              }
             case _ => throw new PopParsingException("invalid propositions in the class section: " + prop)
           }
         }
+
+        // infer all subclasses        
+        var changed = true
+        while (changed) {
+          changed = false
+          classHash.keySet foreach { supercl =>
+            val base = classHash(supercl)
+            var extended = base
+            base.foreach { e =>
+              val op = classHash.get(e)
+              if (op.isDefined) extended = extended ++ op.get
+            }
+
+            if (extended.size > base.size) {
+              changed = true
+              classHash += ((supercl, extended))
+            }
+          }
+        }
+
         // convert it into an immutable hash map
         println(classHash.toMap[String, Set[String]])
         new Problem(list1, list2, new Ontology(classHash.toMap[String, Set[String]]))
     }
+
+  def collectTypes(prop: Proposition) {
+    prop.termlist.foreach {
+      _ match {
+        case o: PopObject => if (o.pType != "Any") {
+          objectHash.get(o.name) foreach
+            { storedType =>
+              //println(storedType.length + " " + o.pType.length)
+              if (storedType.pType != o.pType) throw new PopParsingException("Conflicting types for object: " + o.name + " has type " + storedType + " and " + o.pType)
+            }
+          objectHash += (o.name -> o)
+        }
+        case p: Proposition => collectTypes(p)
+        case v: Variable => throw new PopParsingException("There should not be variables in problem specifications")
+      }
+    }
+  }
 
   def readFile(file: String): Problem =
     {
@@ -101,8 +139,7 @@ object ProblemParser extends PopParser {
         } else if (char == '\n') {
           comment = false
           '\n'
-        }
-        else ' '
+        } else ' '
       }.mkString
     }
 }

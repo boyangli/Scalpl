@@ -159,6 +159,74 @@ class Binding private (val token2varset: HashMap[Token, VarSet]) extends Logging
       }
       newbind
     }
+  
+  /** This is another implementation of addNeqs. From the code, it seems to be faster because it saves the
+   * expensive copy operations. In reality, it is actually slower. I don't understand why.
+   */
+  private def addNeqsSlower(neqs: List[Proposition], ontology: Ontology): Binding =
+    {
+
+      var newMap = token2varset.clone
+      neqs foreach { neq =>
+        // item 1 and item2 are the two parameters of the neq proposition
+        val item1 = neq.termlist(0).asInstanceOf[Token]
+        val item2 = neq.termlist(1).asInstanceOf[Token]
+
+        (newMap.get(item1), newMap.get(item2)) match {
+          case (Some(vs1: VarSet), Some(vs2: VarSet)) =>
+
+            val newvs1 = vs1.bindNotTo(vs2.equals)
+            val newvs2 = vs2.bindNotTo(vs1.equals)
+            // update the mapping between variables and varsets
+            newvs1.equals.foreach(v => newMap += (v -> newvs1))
+            if (newvs1.isGrounded())
+              newMap += (newvs1.groundObj -> newvs1)
+
+            newvs2.equals.foreach(v => newMap += (v -> newvs2))
+            if (newvs2.isGrounded())
+              newMap += (newvs2.groundObj -> newvs2)
+
+          case (Some(vs1: VarSet), None) =>
+            val newvs1 = vs1.bindNotTo(item2)
+            val newvs2 = VarSet(item2).bindNotTo(item1)
+
+            newvs1.equals.foreach(v => newMap += (v -> newvs1))
+            if (newvs1.isGrounded())
+              newMap += (newvs1.groundObj -> newvs1)
+
+            newvs2.equals.foreach(v => newMap += (v -> newvs2))
+            if (newvs2.isGrounded())
+              newMap += (newvs2.groundObj -> newvs2)
+
+          case (None, Some(vs2: VarSet)) =>
+            val newvs1 = VarSet(item1).bindNotTo(item2)
+            val newvs2 = vs2.bindNotTo(item1)
+
+            newvs1.equals.foreach(v => newMap += (v -> newvs1))
+            if (newvs1.isGrounded())
+              newMap += (newvs1.groundObj -> newvs1)
+
+            newvs2.equals.foreach(v => newMap += (v -> newvs2))
+            if (newvs2.isGrounded())
+              newMap += (newvs2.groundObj -> newvs2)
+
+          case (None, None) =>
+            val newvs1 = VarSet(item1).bindNotTo(item2)
+            val newvs2 = VarSet(item2).bindNotTo(item1)
+
+            newvs1.equals.foreach(v => newMap += (v -> newvs1))
+            if (newvs1.isGrounded())
+              newMap += (newvs1.groundObj -> newvs1)
+
+            newvs2.equals.foreach(v => newMap += (v -> newvs2))
+            if (newvs2.isGrounded())
+              newMap += (newvs2.groundObj -> newvs2)
+
+        }
+      }
+      
+      new Binding(newMap)
+    }
 
   /**
    * attempts to build a set of consistent variable binding that 1) make p1 and p2 different,

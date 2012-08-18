@@ -158,7 +158,7 @@ class DecompAction(
     }
 
   /**
-   * The id of this instantiated action is the variable id
+   * The id of this instantiated action equals the variable id
    * All variables are instantiated with the parent id
    */
   def doubleInstantiate(selfId: Int, parentId: Int): DecompAction =

@@ -30,7 +30,8 @@ class Recipe(
   val name: String,
   val steps: List[DecompAction],
   val links: List[Link],
-  val ordering: List[(Int, Int)]) extends Parsible {
+  val ordering: List[(Int, Int)],
+  val bindings: List[(Variable, Token)]) extends Parsible {
 
   override def toString(): String = {
     "[" + name + "]\n" +

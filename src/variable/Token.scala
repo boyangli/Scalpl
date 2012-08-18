@@ -210,7 +210,7 @@ sealed abstract class Token(val name: String) extends TopTerm {
  * a basic unit that represents a variable
  *
  */
-case class Variable(override val name: String, override val pType: String, val number: Int) extends Token(name) {
+final case class Variable(override val name: String, override val pType: String, val number: Int) extends Token(name) {
 
   def this(name: String, varType: String) = this(name, varType, 0)
 
@@ -228,16 +228,11 @@ case class Variable(override val name: String, override val pType: String, val n
   def instantiate(number: Int) = new Variable(name, pType, number)
 
   override def equals(o: Any): Boolean = o match {
-    case that: Variable => that.canEqual(this) && (this.name == that.name) && (this.number == that.number) && (this.pType == that.pType)
+    case that: Variable => (this eq that) || ((this.name == that.name) && (this.number == that.number) && (this.pType == that.pType))
     case _ => false
   }
 
   override def hashCode() = (toString().hashCode() + number * 89) % 37
-
-  def canEqual(o: Any): Boolean = o match {
-    case that: Variable => true
-    case _ => false
-  }
 
   def bindTo(obj: PopObject)(implicit ontology:Ontology): VarSet = VarSet(obj, this)
   def bindTo(vs: VarSet)(implicit ontology:Ontology) = vs.bindTo(this)
@@ -253,21 +248,16 @@ object Variable {
  * Story Object. A variable must bind to an object
  *
  */
-case class PopObject(override val name: String, override val pType: String) extends Token(name) {
+final case class PopObject(override val name: String, override val pType: String) extends Token(name) {
   override def toString() = name + ":" + pType
   override def toShortString() = name
 
   override def equals(o: Any): Boolean = o match {
-    case that: PopObject => that.canEqual(this) && this.name == that.name && this.pType == that.pType
+    case that: PopObject => (this eq that) || (this.name == that.name && this.pType == that.pType)
     case _ => false
   }
 
   override def hashCode() = (name.hashCode() * 37 + pType.hashCode() * 23) / 97
-
-  def canEqual(o: Any): Boolean = o match {
-    case that: PopObject => true
-    case _ => false
-  }
 }
 
 object PopObject {
