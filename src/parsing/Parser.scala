@@ -37,20 +37,30 @@ object PopParser {
 }
 
 object ProblemParser extends PopParser {
-  
-  var objectHash = HashMap[String, Token]()
-  
+
   def problem: Parser[Problem] = "(" ~ "problem" ~ "(" ~ "init" ~> rep(prop) ~
     ")" ~ "(" ~ "goal" ~ rep(prop) ~ ")" ~ opt("(" ~ "classes" ~ rep(prop) ~ ")") <~
     ")" ^^
     {
       case init ~
-        ")" ~ "(" ~ "goal" ~ goal ~ ")" ~ None => new Problem(init, goal)
+        ")" ~ "(" ~ "goal" ~ goal ~ ")" ~ None =>
+          // the subclass list is not supplied
+        var objectHash = HashMap[String, Token]()
+        init.foreach(collectTypes(_, objectHash))
+        goal.foreach(collectTypes(_, objectHash))
+        val subclasses = Map[String, Set[String]]() ++ objectHash.values.map(_.pType).toList.distinct.map((_, Set[String]()))
+        
+        val ontology = new Ontology(subclasses, objectHash.toMap)
+        val newInit = init map { ontology.appendTypesTo }
+        val newGoal = goal map { ontology.appendTypesTo }
 
-      case list1 ~
-        ")" ~ "(" ~ "goal" ~ list2 ~ ")" ~ Some("(" ~ "classes" ~ list3 ~ ")") =>
+        new Problem(newInit, newGoal, ontology)
+
+      case init ~
+        ")" ~ "(" ~ "goal" ~ goal ~ ")" ~ Some("(" ~ "classes" ~ list3 ~ ")") =>
+        // the subclass list is supplied and processed below
         // read in subclass information
-        var classHash = new HashMap[String, Set[String]]()
+        val classHash = new HashMap[String, Set[String]]()
         list3 foreach { prop =>
           prop.verb match {
             case 'subclass =>
@@ -85,12 +95,18 @@ object ProblemParser extends PopParser {
           }
         }
 
-        // convert it into an immutable hash map
-        println(classHash.toMap[String, Set[String]])
-        new Problem(list1, list2, new Ontology(classHash.toMap[String, Set[String]]))
+        val objectHash = HashMap[String, Token]()
+        init.foreach(collectTypes(_, objectHash))
+        goal.foreach(collectTypes(_, objectHash))
+
+        val ontology = new Ontology(classHash.toMap, objectHash.toMap)
+        val newInit = init map { ontology.appendTypesTo }
+        val newGoal = goal map { ontology.appendTypesTo }
+
+        new Problem(newInit, newGoal, ontology)
     }
 
-  def collectTypes(prop: Proposition) {
+  def collectTypes(prop: Proposition, objectHash: HashMap[String, Token]) {
     prop.termlist.foreach {
       _ match {
         case o: PopObject => if (o.pType != "Any") {
@@ -101,7 +117,7 @@ object ProblemParser extends PopParser {
             }
           objectHash += (o.name -> o)
         }
-        case p: Proposition => collectTypes(p)
+        case p: Proposition => collectTypes(p, objectHash)
         case v: Variable => throw new PopParsingException("There should not be variables in problem specifications")
       }
     }

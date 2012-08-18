@@ -8,7 +8,7 @@ import jimpl._
 class Problem(
   val init: List[Proposition],
   val goal: List[Proposition],
-  val ontology:Ontology = Ontology.emptyInstance()) {
+  val ontology:Ontology) {
 
 }
 
@@ -82,11 +82,12 @@ class DecompGlobal(actionTemplates: List[DecompAction], problem: Problem, val re
 
 class GadgetGlobal(actionTemplates: List[Action], problem: Problem, protoPlan: Plan) extends GlobalInfo(actionTemplates, problem) {
 
+  /*
   ontology = ontology.mergeWith(problem.ontology)
   println("all classes: " + ontology)
   val prototype = protoPlan
   var gadgetPlanning = true
-
+	*/
 
 }
 

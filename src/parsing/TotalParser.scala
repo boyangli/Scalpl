@@ -13,21 +13,13 @@ object TotalParser extends AbstractPlanParser {
 
   def decompParse(problemFile: String, actionFile: String, recipeFile: String): (Problem, List[DecompAction], List[Recipe]) =
     {
-      objectHash.clear()
-      var problem = ProblemParser.readFile(problemFile)
+      val problem = ProblemParser.readFile(problemFile)
+      val ontology = problem.ontology
       var actionList = DecompActionParser.readFile(actionFile)
 
-      //      problem.init foreach { collectObjTypes(_) }
-      //      problem.goal foreach { collectObjTypes(_) }
-
-      problem.init foreach { collectTypes(_) }
-      problem.goal foreach { collectTypes(_) }
-
-      val init = problem.init map { appendTypesTo(_) }
-      val goal = problem.goal map { appendTypesTo(_) }
-
-      problem = new Problem(init, goal, problem.ontology)
-      actionList = actionList map { appendTypesToTemplate(_).asInstanceOf[DecompAction] }
+      actionList = actionList map { ontology.appendTypesToTemplate(_).asInstanceOf[DecompAction] }
+      
+      // test the validity of actions for once
       actionList foreach { _.testValid() }
 
       var rawRecipes = DecompParser.readFile(recipeFile, actionList)
@@ -182,27 +174,20 @@ object TotalParser extends AbstractPlanParser {
     }
 
   def parse(problemFile: String, actionFile: String): (Problem, List[Action]) =
-    {
-      objectHash.clear()
+    {      
       var problem = ProblemParser.readFile(problemFile)
       var listAction = ActionParser.readFile(actionFile)
 
-      //      problem.init foreach { collectObjTypes(_) }
-      //      problem.goal foreach { collectObjTypes(_) }
-
-      problem.init foreach { collectTypes(_) }
-      problem.goal foreach { collectTypes(_) }
-
-      val init = problem.init map { appendTypesTo(_) }
-      val goal = problem.goal map { appendTypesTo(_) }
-
-      problem = new Problem(init, goal, problem.ontology)
-      listAction = listAction map { appendTypesToTemplate(_) }
+      val ontology = problem.ontology
+      listAction = listAction map { ontology.appendTypesToTemplate }
+      
+      // test the action validity for once
       listAction foreach { _.testValid() }
 
       (problem, listAction)
     }
 
+  /*
   def parseProblem(problemFile: String): Problem =
     {
       objectHash.clear()
@@ -212,8 +197,9 @@ object TotalParser extends AbstractPlanParser {
       val init = problem.init map { appendTypesTo(_) }
       val goal = problem.goal map { appendTypesTo(_) }
       new Problem(init, goal, problem.ontology)
-    }
+    }*/
 
+  /*
   /** This method tries to be a more stable version of extract recipe but fails
    * The problem with the old extract recipe is that when the parent has the variables (v1, v2)
    * and the child action is specified with (v2, v1) 
@@ -332,5 +318,5 @@ object TotalParser extends AbstractPlanParser {
 
       new Recipe(r.name, steps map { _._2 }, links, orderings)
     }
-  }
+  } */
 }
