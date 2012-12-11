@@ -1,7 +1,8 @@
 package jimpl;
 
-import java.util.List;
+
 import planning.Constants;
+
 public interface JOrdering
 {
 	public boolean orderedBefore( int idS1, int idS2);
