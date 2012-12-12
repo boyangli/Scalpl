@@ -21,7 +21,7 @@ object Main {
     }
 
     val g = new GlobalInfo(actions, problem)
-    //Global.setDebug()
+
     var plan = g.initPlan()
     //Global.setTrace()
     val parameter = new SearchParameter(50000)

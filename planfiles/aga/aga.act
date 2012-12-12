@@ -1,0 +1,17 @@
+(action kill-with (?p1:Person ?p2:Person ?obj:Weapon)
+	(constraints (neq ?p1 ?p2))
+	(preconditions (alive ?p1) (alive ?p2) (owns ?p1 ?obj))
+	(effects (not(alive ?p2)))
+)
+
+(action destroy-earth (?p1:Person ?p2:Person)
+     (constraints (neq ?p1 ?p2))
+	 (preconditions (alive ?p1) (alive ?p2) (obey ?p2 ?p1) (evil ?p1))
+	 (effects (earth-destroyed))
+	 )
+	 
+(action cure (?p1:Person ?p2:Person ?med:Medicine)
+	(constraints (neq ?p2 ?p1))
+	(preconditions (owns ?p1 ?med) (sick ?p2))
+	(effects (not (sick ?p2)) (fame-restored ?p1))
+	)

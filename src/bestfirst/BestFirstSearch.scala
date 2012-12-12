@@ -53,12 +53,9 @@ class BestFirstSearch[N] (
       throw new Exception("Not found: Queue exhausted.\n"+ stats.toString)
     }
 
-  def addToQueue(nodes: List[N]) {
-    for (node <- nodes) {
-      val value = evaluate(node)
-      queue += new ValuedNode[N](node, evaluate(node))
-      stats.nodeVisited += 1
-    }
+  def addToQueue(nodes: List[N]) {    
+    queue ++= (for (node <- nodes) yield new ValuedNode[N](node, evaluate(node)))     
+    stats.nodeVisited += nodes.size
   }
 }
 

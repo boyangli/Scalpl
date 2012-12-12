@@ -1,0 +1,22 @@
+(problem
+(init 
+	(owns sidekick:Person sword:Weapon)
+	(sick kid1:Person)
+	(sick kid2:Person)
+	(sick kid3:Person)
+	(alive minion1:Person)
+	(alive minion2:Person)
+	(alive minion3:Person)
+	(alive sidekick)
+	(alive villain:Person)
+	(obey minion1:Person villain)
+	(obey minion2:Person villain)
+	(obey minion3:Person villain)
+	(evil villain)
+	(owns villain pills:Medicine)
+	
+)
+(goal
+	
+)
+)
