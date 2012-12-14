@@ -41,7 +41,7 @@ object GameMain {
   def plan(problem: Problem, actions: List[Action], initState: List[Proposition]) = {
 
     val problems = generateProblems(problem, initState)
-    val array = Array.ofDim[Float](5)
+    val array = Array.ofDim[Int](3)
     var i = 0
     
     for (currentProb <- problems) {

@@ -16,9 +16,11 @@ class GameServer {
 
   var providerSocket: ServerSocket = null
   var connection: Socket = null
-  var out: ObjectOutputStream = null
-  var in: ObjectInputStream = null
+  var out: DataOutputStream = null
+  var in: DataInputStream = null
   var message: String = "";
+
+  var plans = Array(3, 3, 1);
 
   def run() {
 
@@ -41,14 +43,15 @@ class GameServer {
       connection = providerSocket.accept();
       System.out.println("Connection received from " + connection.getInetAddress().getHostName());
       //3. get Input and Output streams
-      out = new ObjectOutputStream(connection.getOutputStream());
+      out = new DataOutputStream(connection.getOutputStream());
       out.flush();
-      in = new ObjectInputStream(connection.getInputStream());
-      sendMessage("Connection successful");
+      in = new DataInputStream(connection.getInputStream());
+      //sendMessage("Connection successful");
       //4. The two parts communicate via the input and output streams
       do {
         try {
-          message = in.readObject().asInstanceOf[String];
+          // message = in.readObject().asInstanceOf[String];
+          message = in.readLine();
           System.out.println("client>" + message);
           if (message.equals("bye"))
             sendMessage("bye");
@@ -56,8 +59,28 @@ class GameServer {
             val props = string2WorldState(message)
             initState = updateInitState(initState, props)
             val numbers = plan(prob, actions, initState)
-            val rtnMsg = numbers.mkString(",")
-            sendMessage(rtnMsg)
+
+            if (numbers(0) < plans(0)) {
+              // send fear + anger
+              val rtnMsg = "-0.5,-0.5,0.0,1,0"
+              sendMessage(rtnMsg)
+              plans = numbers
+            } else if (numbers(1) < plans(1)) {
+              // send shame
+              val rtnMsg = "0.0,-0.5,0.0,1.0,1"
+              sendMessage(rtnMsg)
+              plans = numbers
+            } else if (numbers(2) < plans(2)) {
+              // send relief
+              val rtnMsg = "-0.5,0.0,0.0,0.0,0"
+              sendMessage(rtnMsg)
+              plans = numbers
+            } else 
+            {
+              val rtnMsg = "nothing"
+              sendMessage(rtnMsg)
+            }
+
           }
         } catch {
           case err: ClassNotFoundException =>
@@ -82,7 +105,8 @@ class GameServer {
 
   def sendMessage(msg: String) {
     try {
-      out.writeObject(msg);
+      out.writeBytes(msg);
+      //out.writeObject(msg);
       out.flush();
       System.out.println("server>" + msg);
     } catch {
